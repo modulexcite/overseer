@@ -42,6 +42,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CSVReader.cs" />
+    <Compile Include="HAProxy\Backend.cs" />
+    <Compile Include="HAProxy\Frontend.cs" />
+    <Compile Include="HAProxy\HAProxyServer.cs" />
+    <Compile Include="HAProxy\Item.cs" />
+    <Compile Include="HAProxy\Proxy.cs" />
+    <Compile Include="HAProxy\ProxyServerStatus.cs" />
+    <Compile Include="HAProxy\Server.cs" />
+    <Compile Include="HAProxy\StatAttribute.cs" />
+    <Compile Include="HAProxy\StatProperty.cs" />
+    <Compile Include="HAProxy\StatusType.cs" />
+    <Compile Include="IDelimitedReader.cs" />
+    <Compile Include="IDelimitedRow.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="vSphere\ServerConnection.cs" />

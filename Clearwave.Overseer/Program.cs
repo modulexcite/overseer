@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Clearwave.Overseer.HAProxy;
 using Clearwave.Overseer.vSphere;
 
 namespace Clearwave.Overseer
@@ -12,12 +13,17 @@ namespace Clearwave.Overseer
     {
         static void Main(string[] args)
         {
+            //DovSphereExample();
+
+            var haproxy = new HAProxyServer("http://127.0.0.1:8080/stats");
+            var proxies = haproxy.FetchHAProxyStats();
+        }
+        
+        static void DovSphereExample()
+        {
             var sc = new ServerConnection(@"https://127.0.0.1/sdk");
-            var sm = new SessionManager(sc, "username", "password");
-
+            var sm = new ManagementAPI(sc, "username", "password");
             sm.ConnectAndLogin();
-
-
 
             var props = sm.RetrievePropertiesForAllObjectsOfType("HostSystem", properties: new[] { 
                 "name",
