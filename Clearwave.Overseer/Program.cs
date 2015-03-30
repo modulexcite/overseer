@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Clearwave.Overseer.HAProxy;
@@ -15,8 +16,27 @@ namespace Clearwave.Overseer
         {
             //DovSphereExample();
 
-            var haproxy = new HAProxyServer("http://127.0.0.1:8080/stats");
-            var proxies = haproxy.FetchHAProxyStats();
+            //var haproxy = new HAProxyServer("http://127.0.0.1:8080/stats");
+            //var proxies = haproxy.FetchHAProxyStats();
+
+            var r = new Random();
+            var s = new Stats();
+            while (true)
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    Thread.Sleep(1000);
+                    for (int j = 0; j < r.Next(10); j++)
+                    {
+                        s.Handle("example:1|c");
+                    }
+                    s.Handle("MyTimer:" + r.Next(1000) + "|ms");
+                    Console.Write("tick...");
+                }
+                Console.Clear();
+                s.FlushMetrics();
+                Console.WriteLine();
+            }
         }
         
         static void DovSphereExample()
