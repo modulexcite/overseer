@@ -45,9 +45,14 @@ namespace Clearwave.Overseer
             }
         }
 
+        private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
         public static double DateTimeToUnixTimestamp(DateTime dateTime)
         {
-            return (dateTime - new DateTime(1970, 1, 1).ToLocalTime()).TotalSeconds;
+            return (dateTime - Epoch.ToLocalTime()).TotalSeconds;
+        }
+        public static DateTime UnixTimeStampToDateTime(double unixTimeStamp)
+        {
+            return Epoch.AddSeconds(unixTimeStamp).ToLocalTime();
         }
 
         public void FlushMetrics()
