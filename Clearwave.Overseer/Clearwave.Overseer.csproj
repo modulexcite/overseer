@@ -64,8 +64,10 @@
     <Compile Include="HAProxy\StatusType.cs" />
     <Compile Include="IDelimitedReader.cs" />
     <Compile Include="IDelimitedRow.cs" />
+    <Compile Include="MetricsDatabase.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SqlMapper.cs" />
     <Compile Include="Stats.cs" />
     <Compile Include="vSphere\ServerConnection.cs" />
     <Compile Include="vSphere\ManagementAPI.cs" />

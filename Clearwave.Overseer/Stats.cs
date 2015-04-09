@@ -123,6 +123,11 @@ namespace Clearwave.Overseer
             }
             ProcessMetrics(metrics, FlushInterval, time_stamp);
 
+            foreach (var item in metrics.gauges)
+            {
+                MetricsDatabase.RecordGauge((string)item.Key, (int)time_stamp, (long)item.Value);
+            }
+
             if (FlushToConsole)
             {
                 Console.WriteLine("Flush=" + time_stamp);
