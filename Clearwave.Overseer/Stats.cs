@@ -3,35 +3,59 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Clearwave.Overseer
 {
     public class Stats
     {
+        public Stats()
+        {
+            FlushInterval = 10000;
+            KeyNameSanitize = true;
+            PctThreshold = new int[] { 90 };
+            FlushToConsole = false;
+        }
+
+        /// <summary>
+        /// for time information, calculate the Nth percentile(s)
+        /// (can be a single value or list of floating-point values)
+        /// negative values mean to use "top" Nth percentile(s) values
+        /// [%, default: 90]
+        /// </summary>
+        public int[] PctThreshold { get; set; }
+        /// <summary>
+        /// sanitize all stat names on ingress [default: true]
+        /// If disabled, it is up to the backends to sanitize keynames
+        /// as appropriate per their storage requirements.
+        /// </summary>
+        public bool KeyNameSanitize { get; set; }
+        /// <summary>
+        /// interval (in ms) to flush metrics to each backend - default is 10,000ms
+        /// </summary>
+        public int FlushInterval { get; set; }
+        public bool FlushToConsole { get; set; }
+
         private Dictionary<string, long> counters = new Dictionary<string, long>()
         { 
             { "packets_received", 0 },
             { "metrics_received", 0 },
             { "bad_lines_seen", 0 }
         };
-        private Dictionary<string, int> keyCounter = new Dictionary<string, int>();
 
         private Dictionary<string, List<long>> timers = new Dictionary<string, List<long>>();
         private Dictionary<string, long> timer_counters = new Dictionary<string, long>();
         private Dictionary<string, long> gauges = new Dictionary<string, long>();
         private Dictionary<string, HashSet<string>> sets = new Dictionary<string, HashSet<string>>();
 
+        private readonly ReaderWriterLockSlim flushMetricsReaderWriterLock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
+
         private long old_timestamp = 0;
 
-        private static int[] pctThreshold = new int[] { 90 };
-        private static bool keyNameSanitize = true;
-        private static int keyFlushInterval = 0;
-        private static int flushInterval = 10000;
-
-        private static string SanitizeKeyName(string key)
+        private string SanitizeKeyName(string key)
         {
-            if (keyNameSanitize)
+            if (KeyNameSanitize)
             {
                 // TODO:
                 //return key.Replace(" ", "_")
@@ -55,56 +79,78 @@ namespace Clearwave.Overseer
             return Epoch.AddSeconds(unixTimeStamp).ToLocalTime();
         }
 
-        public void FlushMetrics()
+        private Timer interval;
+
+        public void Start()
+        {
+            if (interval != null)
+            {
+                throw new InvalidOperationException("Already Started!");
+            }
+            interval = new Timer(FlushMetrics, null, FlushInterval, FlushInterval);
+        }
+
+        public void FlushMetrics(object state)
         {
             var time_stamp = (long)Math.Round(DateTimeToUnixTimestamp(DateTime.UtcNow)); // seconds
             if (old_timestamp > 0)
             {
-                gauges["timestamp_lag_namespace"] = (time_stamp - old_timestamp - (flushInterval / 1000));
+                gauges["timestamp_lag_namespace"] = (time_stamp - old_timestamp - (FlushInterval / 1000));
             }
             old_timestamp = time_stamp;
-            // TODO: copy metrics for processing and THEN clear (for concurrency)
-            var metrics = new
-            {
-                counters = counters,
-                gauges = gauges,
-                timers = timers,
-                timer_counters = timer_counters,
-                sets = sets,
-                counter_rates = new Dictionary<string, double>(),
-                timer_data = new Dictionary<string, Dictionary<string, long>>(),
-                pctThreshold = pctThreshold,
-                statsd_metrics = new Dictionary<string, long>(),
-            };
-            ProcessMetrics(metrics, flushInterval, time_stamp);
 
-            Console.WriteLine("Flush="+time_stamp);
-            Console.WriteLine("gauges (" + metrics.gauges.Count + ")");
-            foreach (var item in metrics.gauges)
+            dynamic metrics = null;
+            flushMetricsReaderWriterLock.EnterWriteLock();
+            try
             {
-                Console.WriteLine("Key={0} Value={1}", item.Key, item.Value);
-            }
-            Console.WriteLine("Counters (" + metrics.counters.Count + ")");
-            foreach (var item in metrics.counters)
-            {
-                Console.WriteLine("Key={0} Value={1} Rate={2}", item.Key, item.Value, metrics.counter_rates[item.Key]);
-            }
-            Console.WriteLine("sets (" + metrics.sets.Count + ")");
-            foreach (var item in metrics.sets)
-            {
-                Console.WriteLine("Key={0} Value={1}", item.Key, item.Value.Count);
-            }
-            Console.WriteLine("timers (" + metrics.timers.Count + ")");
-            foreach (var item in metrics.timers)
-            {
-                Console.WriteLine("Key={0}", item.Key);
-                foreach (var k in metrics.timer_data[item.Key])
+                metrics = new
                 {
-                    Console.WriteLine("       Stat={0} Value={1}", k.Key, k.Value);
+                    counters = new Dictionary<string, long>(counters),
+                    gauges = new Dictionary<string, long>(gauges),
+                    timers = new Dictionary<string, List<long>>(timers),
+                    timer_counters = new Dictionary<string, long>(timer_counters),
+                    sets = new Dictionary<string, HashSet<string>>(sets),
+                    counter_rates = new Dictionary<string, double>(),
+                    timer_data = new Dictionary<string, Dictionary<string, long>>(),
+                    pctThreshold = PctThreshold,
+                    statsd_metrics = new Dictionary<string, long>(),
+                };
+                ClearMetrics();
+            }
+            finally
+            {
+                flushMetricsReaderWriterLock.ExitWriteLock();
+            }
+            ProcessMetrics(metrics, FlushInterval, time_stamp);
+
+            if (FlushToConsole)
+            {
+                Console.WriteLine("Flush=" + time_stamp);
+                Console.WriteLine("gauges (" + metrics.gauges.Count + ")");
+                foreach (var item in metrics.gauges)
+                {
+                    Console.WriteLine("Key={0} Value={1}", item.Key, item.Value);
+                }
+                Console.WriteLine("Counters (" + metrics.counters.Count + ")");
+                foreach (var item in metrics.counters)
+                {
+                    Console.WriteLine("Key={0} Value={1} Rate={2}", item.Key, item.Value, metrics.counter_rates[item.Key]);
+                }
+                Console.WriteLine("sets (" + metrics.sets.Count + ")");
+                foreach (var item in metrics.sets)
+                {
+                    Console.WriteLine("Key={0} Value={1}", item.Key, item.Value.Count);
+                }
+                Console.WriteLine("timers (" + metrics.timers.Count + ")");
+                foreach (var item in metrics.timers)
+                {
+                    Console.WriteLine("Key={0}", item.Key);
+                    foreach (var k in metrics.timer_data[item.Key])
+                    {
+                        Console.WriteLine("       Stat={0} Value={1}", k.Key, k.Value);
+                    }
                 }
             }
-
-            ClearMetrics();
         }
 
         private void ClearMetrics()
@@ -258,118 +304,104 @@ namespace Clearwave.Overseer
             statsd_metrics["processing_time"] = (int)Math.Round(sw.Elapsed.TotalSeconds);
         }
 
-        public void Handle(string msg)
+        public void Handle(string packet_data)
         {
-            // Guages
-            // <metric name>:<value>|g
-            // 
-            // Counters
-            // <metric name>:<value>|c[|@<sample rate>]
-            // 
-            // Timers
-            // <metric name>:<value>|ms
-            // 
-            // Histograms
-            // <metric name>:<value>|h
-            // 
-            // Meters
-            // <metric name>:<value>|m
-
-            counters["packets_received"]++;
-
-            var packet_data = msg.ToString();
-            string[] metrics = null;
-            if (packet_data.IndexOf("\n") > -1)
+            flushMetricsReaderWriterLock.EnterReadLock();
+            try
             {
-                metrics = packet_data.Split('\n');
-            }
-            else
-            {
-                metrics = new string[] { packet_data };
-            }
-            for (int midx = 0; midx < metrics.Length; midx++)
-            {
-                if (metrics[midx].Length == 0)
-                {
-                    continue;
-                }
+                // Guages
+                // <metric name>:<value>|g
+                // 
+                // Counters
+                // <metric name>:<value>|c[|@<sample rate>]
+                // 
+                // Timers
+                // <metric name>:<value>|ms
+                // 
+                // Histograms
+                // <metric name>:<value>|h
+                // 
+                // Meters
+                // <metric name>:<value>|m
 
-                counters["metrics_received"]++;
-                // TODO:
-                //if (config.dumpMessages)
-                //{
-                //    l.log(metrics[midx].toString());
-                //}
-                var bits = metrics[midx].ToString().Split(':');
-                var key = SanitizeKeyName(bits[0]);
+                counters["packets_received"]++;
 
-                if (keyFlushInterval > 0)
+                string[] metrics = null;
+                if (packet_data.IndexOf("\n") > -1)
                 {
-                    if (!keyCounter.ContainsKey(key))
-                    {
-                        keyCounter[key] = 0;
-                    }
-                    keyCounter[key] += 1;
-                }
-
-                var sampleRate = 1d;
-                var fields = bits[1].Split('|');
-                if (!IsValidPacket(fields))
-                {
-                    // TODO
-                    //l.log('Bad line: ' + fields + ' in msg "' + metrics[midx] +'"');
-                    counters["bad_lines_seen"]++;
-                    // TODO
-                    //stats.messages.bad_lines_seen++;
-                    continue;
-                }
-                if (fields.Length >= 3)
-                {
-                    sampleRate = double.Parse(fields[2].Substring(1));
-                }
-
-                var metric_type = fields[1].Trim();
-                if (metric_type == "ms")
-                {
-                    if (!timers.ContainsKey(key))
-                    {
-                        timers[key] = new List<long>();
-                        timer_counters[key] = 0;
-                    }
-                    timers[key].Add(long.Parse(fields[0]));
-                    timer_counters[key] += (long)(1 / sampleRate);
-                }
-                else if (metric_type == "g")
-                {
-                    if (gauges.ContainsKey(key) && (fields[0].StartsWith("+") || fields[0].StartsWith("-")))
-                    {
-                        gauges[key] += int.Parse(fields[0]);
-                    }
-                    else
-                    {
-                        gauges[key] = int.Parse(fields[0]);
-                    }
-                }
-                else if (metric_type == "s")
-                {
-                    if (!sets.ContainsKey(key))
-                    {
-                        sets[key] = new HashSet<string>();
-                    }
-                    sets[key].Add(fields[0]);
+                    metrics = packet_data.Split('\n');
                 }
                 else
                 {
-                    if (!counters.ContainsKey(key))
+                    metrics = new string[] { packet_data };
+                }
+                for (int midx = 0; midx < metrics.Length; midx++)
+                {
+                    if (metrics[midx].Length == 0)
                     {
-                        counters[key] = 0;
+                        continue;
                     }
-                    counters[key] += (long)Math.Round(double.Parse(fields[0]) * (1 / sampleRate));
+
+                    counters["metrics_received"]++;
+                    var bits = metrics[midx].ToString().Split(':');
+                    var key = SanitizeKeyName(bits[0]);
+
+                    var sampleRate = 1d;
+                    var fields = bits[1].Split('|');
+                    if (!IsValidPacket(fields))
+                    {
+                        counters["bad_lines_seen"]++;
+                        continue;
+                    }
+                    if (fields.Length >= 3)
+                    {
+                        sampleRate = double.Parse(fields[2].Substring(1));
+                    }
+
+                    var metric_type = fields[1].Trim();
+                    if (metric_type == "ms")
+                    {
+                        if (!timers.ContainsKey(key))
+                        {
+                            timers[key] = new List<long>();
+                            timer_counters[key] = 0;
+                        }
+                        timers[key].Add(long.Parse(fields[0]));
+                        timer_counters[key] += (long)(1 / sampleRate);
+                    }
+                    else if (metric_type == "g")
+                    {
+                        if (gauges.ContainsKey(key) && (fields[0].StartsWith("+") || fields[0].StartsWith("-")))
+                        {
+                            gauges[key] += int.Parse(fields[0]);
+                        }
+                        else
+                        {
+                            gauges[key] = int.Parse(fields[0]);
+                        }
+                    }
+                    else if (metric_type == "s")
+                    {
+                        if (!sets.ContainsKey(key))
+                        {
+                            sets[key] = new HashSet<string>();
+                        }
+                        sets[key].Add(fields[0]);
+                    }
+                    else
+                    {
+                        if (!counters.ContainsKey(key))
+                        {
+                            counters[key] = 0;
+                        }
+                        counters[key] += (long)Math.Round(double.Parse(fields[0]) * (1 / sampleRate));
+                    }
                 }
             }
-
-            // TODO:
-            // stats.messages.last_msg_seen = Math.round(new Date().getTime() / 1000);
+            finally
+            {
+                flushMetricsReaderWriterLock.ExitReadLock();
+            }
         }
 
         private static bool IsDouble(string str)

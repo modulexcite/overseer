@@ -22,6 +22,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -67,6 +69,7 @@
     <Compile Include="Stats.cs" />
     <Compile Include="vSphere\ServerConnection.cs" />
     <Compile Include="vSphere\ManagementAPI.cs" />
+    <Compile Include="vSphere\QuickStatsPoller.cs" />
     <Compile Include="WatchGuard\ServerConnection.cs" />
     <Compile Include="WatchGuard\VPNStatusXml.cs" />
   </ItemGroup>

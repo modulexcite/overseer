@@ -26,7 +26,6 @@ namespace Clearwave.Overseer.vSphere
         private readonly string address;
         private readonly int timeout;
         private readonly Uri baseAddress;
-        private readonly Stopwatch stopwatch = new Stopwatch();
 
         public Cookie SessionCookie { get; private set; }
 
@@ -42,49 +41,35 @@ namespace Clearwave.Overseer.vSphere
 
         public string ExecutPostMethod(string postData)
         {
-            stopwatch.Stop();
-            stopwatch.Reset();
-            stopwatch.Start();
-            try
+            var request = (HttpWebRequest)HttpWebRequest.Create(baseAddress);
+            request.Method = "POST";
+            request.Timeout = this.timeout;
+            request.ContentType = "text/xml; charset=UTF-8";
+            request.UserAgent = "Clearwave.Overseer";
+            request.CookieContainer = new CookieContainer();
+            request.ServerCertificateValidationCallback = HandleCert;
+            if (SessionCookie != null)
             {
-                var request = (HttpWebRequest)HttpWebRequest.Create(baseAddress);
-                request.Method = "POST";
-                request.Timeout = this.timeout;
-                request.ContentType = "text/xml; charset=UTF-8";
-                request.UserAgent = "Clearwave.Overseer";
-                request.CookieContainer = new CookieContainer();
-                request.ServerCertificateValidationCallback = HandleCert;
-                if (SessionCookie != null)
-                {
-                    request.CookieContainer.Add(SessionCookie);
-                }
-                var postDataBuffer = Encoding.UTF8.GetBytes(postData);
-                request.ContentLength = postDataBuffer.Length;
-                using (var dataStream = request.GetRequestStream())
-                {
-                    dataStream.Write(postDataBuffer, 0, postDataBuffer.Length);
-                }
-                var response = (HttpWebResponse)request.GetResponse();
-                if (response.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new Exception(response.StatusCode.ToString() + " " + ReadContentFromResult(response));
-                }
-                var cookies = response.Cookies;
-                if (cookies[SessionCookieName] != null)
-                {
-                    this.SessionCookie = cookies[SessionCookieName];
-                }
-                var resultString = ReadContentFromResult(response);
-#if DEBUG
-                Debug.WriteLine("Result: " + resultString);
-#endif
-                return resultString;
+                request.CookieContainer.Add(SessionCookie);
             }
-            finally
+            var postDataBuffer = Encoding.UTF8.GetBytes(postData);
+            request.ContentLength = postDataBuffer.Length;
+            using (var dataStream = request.GetRequestStream())
             {
-                stopwatch.Stop();
-                Trace.WriteLine(string.Format("Executed POST {0}ms", stopwatch.Elapsed.TotalMilliseconds));
+                dataStream.Write(postDataBuffer, 0, postDataBuffer.Length);
             }
+            var response = (HttpWebResponse)request.GetResponse();
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                throw new Exception(response.StatusCode.ToString() + " " + ReadContentFromResult(response));
+            }
+            var cookies = response.Cookies;
+            if (cookies[SessionCookieName] != null)
+            {
+                this.SessionCookie = cookies[SessionCookieName];
+            }
+            var resultString = ReadContentFromResult(response);
+            return resultString;
         }
 
         private static string ReadContentFromResult(HttpWebResponse response)
