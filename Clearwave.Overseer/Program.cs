@@ -14,42 +14,24 @@ namespace Clearwave.Overseer
     {
         static void Main(string[] args)
         {
-            //DovSphereExample();
+            var sc = new ServerConnection(@"https://SERVER/sdk");
+            var sm = new ManagementAPI(sc, "USERNAME", "PASSWORD");
+            sm.ConnectAndLogin();
+            new QuickStatsPoller(sm, StatsdSender.Send).Start(10 * 1000);
 
-            //var haproxy = new HAProxyServer("http://127.0.0.1:8080/stats");
-            //var proxies = haproxy.FetchHAProxyStats();
-
-            var r = new Random();
-            var s = new Stats();
-            while (true)
-            {
-                for (int i = 0; i < 10; i++)
-                {
-                    Thread.Sleep(1000);
-                    for (int j = 0; j < r.Next(10); j++)
-                    {
-                        s.Handle("example:1|c");
-                    }
-                    s.Handle("MyTimer:" + r.Next(1000) + "|ms");
-                    Console.Write("tick...");
-                }
-                Console.Clear();
-                s.FlushMetrics();
-                Console.WriteLine();
-            }
+            new AutoResetEvent(false).WaitOne();
         }
-        
+
         static void DovSphereExample()
         {
-            var sc = new ServerConnection(@"https://127.0.0.1/sdk");
-            var sm = new ManagementAPI(sc, "username", "password");
+            var sc = new ServerConnection(@"https://SERVER/sdk");
+            var sm = new ManagementAPI(sc, "USERNAME", "PASSWORD");
             sm.ConnectAndLogin();
 
             var props = sm.RetrievePropertiesForAllObjectsOfType("HostSystem", properties: new[] { 
                 "name",
 		"summary.hardware.cpuMhz",
 		"summary.hardware.memorySize", // bytes
-		"summary.hardware.numCpuCores",
 		"summary.hardware.numCpuCores",
 		"summary.quickStats.overallCpuUsage",    // MHz
 		"summary.quickStats.overallMemoryUsage", // MB
@@ -68,7 +50,7 @@ namespace Clearwave.Overseer
             Console.ReadLine();
 
             props = sm.RetrievePropertiesForAllObjectsOfType("VirtualMachine", properties: new[] { 
-                "name",
+                "name",  // e.g. 
                 "runtime.host",
                 "guest.guestFullName",
                 "guest.hostName",
@@ -77,6 +59,8 @@ namespace Clearwave.Overseer
                 "guest.disk",
                 "config.hardware.memoryMB",
                 "config.hardware.numCPU",
+                "runtime.maxCpuUsage",
+                "runtime.maxMemoryUsage",
                 "summary.quickStats.balloonedMemory",
                 "summary.quickStats.guestMemoryUsage",
                 "summary.quickStats.hostMemoryUsage",
@@ -95,22 +79,22 @@ namespace Clearwave.Overseer
 
             Console.ReadLine();
 
-             props = sm.RetrievePropertiesForAllObjectsOfType("Datastore", properties: new[] { 
+            props = sm.RetrievePropertiesForAllObjectsOfType("Datastore", properties: new[] { 
                 "name",
 		"summary.capacity",
 		"summary.freeSpace", }, rootFolderName: "ha-folder-datastore");
-             Console.WriteLine("Datastore");
-             foreach (var item in props.Keys)
-             {
-                 foreach (var prop in props[item].Keys)
-                 {
-                     Console.WriteLine(item + " | " + prop + "=" + props[item][prop]);
-                 }
-                 Console.WriteLine("--");
-                 Console.WriteLine("");
-             }
+            Console.WriteLine("Datastore");
+            foreach (var item in props.Keys)
+            {
+                foreach (var prop in props[item].Keys)
+                {
+                    Console.WriteLine(item + " | " + prop + "=" + props[item][prop]);
+                }
+                Console.WriteLine("--");
+                Console.WriteLine("");
+            }
 
-             Console.ReadLine();
+            Console.ReadLine();
         }
     }
 }
