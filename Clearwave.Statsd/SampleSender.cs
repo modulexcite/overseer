@@ -29,6 +29,7 @@ namespace Clearwave.Statsd
 
             var stopwatch = new Stopwatch();
 
+            var r = new Random();
             while (true)
             {
                 stopwatch.Restart();
@@ -39,6 +40,9 @@ namespace Clearwave.Statsd
                 bytesSent = udpClient.Send(buffer, buffer.Length);
 
                 buffer = Encoding.ASCII.GetBytes("local.hits:1|c");
+                bytesSent = udpClient.Send(buffer, buffer.Length);
+
+                buffer = Encoding.ASCII.GetBytes("local.random:" + r.Next(1000).ToString("F0") + "|ms");
                 bytesSent = udpClient.Send(buffer, buffer.Length);
 
                 stopwatch.Stop();

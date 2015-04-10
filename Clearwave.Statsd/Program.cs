@@ -14,7 +14,7 @@ namespace Clearwave.Statsd
     {
         public static void Main(string[] args)
         {
-            var stats = new Stats();
+            var stats = new StatsCollector();
             var listenerPort = int.Parse(ConfigurationManager.AppSettings["statsd_port"]);
             stats.FlushInterval = int.Parse(ConfigurationManager.AppSettings["statsd_FlushInterval"]);
             stats.PctThreshold = ConfigurationManager.AppSettings["statsd_PctThreshold"].Split(',').Select(x => int.Parse(x)).ToArray();

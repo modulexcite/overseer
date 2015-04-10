@@ -49,6 +49,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SeverityCode.cs" />
     <Compile Include="SyslogMessage.cs" />
+    <Compile Include="TrafficLog.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clearwave.Statsd\Clearwave.Statsd.csproj">
+      <Project>{792feced-1e14-4d38-994f-2f7b15822933}</Project>
+      <Name>Clearwave.Statsd</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -6,9 +6,9 @@ using System.Threading;
 
 namespace Clearwave.Statsd
 {
-    public class Stats
+    public class StatsCollector
     {
-        public Stats()
+        public StatsCollector()
         {
             FlushInterval = 10 * 1000;
             PctThreshold = new[] { 90 };
@@ -131,6 +131,7 @@ namespace Clearwave.Statsd
                 {
                     Console.WriteLine("stats.sets.{0}.count = {1}", item.Key, item.Value.Count);
                 }
+                Console.WriteLine("Flush End=" + time_stamp);
             }
         }
 
@@ -169,7 +170,7 @@ namespace Clearwave.Statsd
                 }
                 else
                 {
-                    timers[key].Clear();
+                    timers[key] = new List<long>();
                     timer_counters[key] = 0;
                 }
             }
@@ -182,7 +183,7 @@ namespace Clearwave.Statsd
                 }
                 else
                 {
-                    sets.Clear();
+                    sets[key] = new HashSet<string>();
                 }
             }
 
