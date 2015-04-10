@@ -68,8 +68,28 @@ namespace Clearwave.Statsd
             return Epoch.AddSeconds(unixTimeStamp).ToLocalTime();
         }
 
-        public void FlushMetrics(Action<long, Metrics> onFlush)
+        public void StartFlushTimer()
         {
+            if (interval != null)
+            {
+                return;
+            }
+            interval = new Timer(state => FlushMetrics(), null, FlushInterval, FlushInterval);
+            Console.WriteLine("Flushing every " + FlushInterval + "ms");
+        }
+
+        private Timer interval; // need to keep a reference so GC doesn't clean it up
+
+
+        public Action BeforeFlush { get; set; }
+        public Action<long, Metrics> OnFlush { get; set; }
+
+        public void FlushMetrics()
+        {
+            if (BeforeFlush != null)
+            {
+                BeforeFlush();
+            }
             var time_stamp = (long)Math.Round(DateTimeToUnixTimestamp(DateTime.UtcNow)); // seconds
             if (old_timestamp > 0)
             {
@@ -129,9 +149,9 @@ namespace Clearwave.Statsd
                 Console.WriteLine("Flush End=" + time_stamp);
             }
 
-            if (onFlush != null)
+            if (OnFlush != null)
             {
-                onFlush(time_stamp, metrics);
+                OnFlush(time_stamp, metrics);
             }
         }
 
@@ -468,7 +488,6 @@ namespace Clearwave.Statsd
                 default:
                     return IsInteger(fields[0]);
             }
-
         }
     }
 }

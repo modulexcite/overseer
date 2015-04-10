@@ -20,16 +20,14 @@ namespace Clearwave.HAProxyTraffic
             collector.FlushToConsole = true;
             collector.PctThreshold = new[] { 90 };
             collector.DeleteIdleStats = false;
-            var onFlush = new Action<long, Metrics>((time_stamp, metrics) =>
+            collector.BeforeFlush = () =>
             {
-                Console.WriteLine("Queue Count: " + queue.Count);
-            });
-            interval = new Timer(state => collector.FlushMetrics(onFlush), null, collector.FlushInterval, collector.FlushInterval);
-            Console.WriteLine("Flushing every " + collector.FlushInterval + "ms");
+                collector.Handle("traffic.log.queue:" + queue.Count + "|g");
+            };
+            collector.StartFlushTimer();
         }
 
         private static readonly StatsCollector collector;
-        static Timer interval; // need to keep a reference so GC doesn't clean it up
 
         // TODO: this might not be the most performant compared to say... Disruptor pattern. But it's simple.
         private static readonly ConcurrentQueue<string> queue = new ConcurrentQueue<string>();
@@ -95,7 +93,7 @@ timers:
 {route}.tr
                  */
 
-                var packetAge=DateTime.Now.Subtract(accept_date);
+                var packetAge = DateTime.Now.Subtract(accept_date);
                 if (packetAge.TotalMinutes > 1)
                 {
                     // too old to flush? should we discard?
