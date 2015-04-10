@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Clearwave.Overseer", "Clear
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Clearwave.Statsd", "Clearwave.Statsd\Clearwave.Statsd.csproj", "{792FECED-1E14-4D38-994F-2F7B15822933}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Clearwave.HAProxyTraffic", "Clearwave.HAProxyTraffic\Clearwave.HAProxyTraffic.csproj", "{BAC919A3-E9BA-4F4D-A841-54CB73C73BF3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{792FECED-1E14-4D38-994F-2F7B15822933}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{792FECED-1E14-4D38-994F-2F7B15822933}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{792FECED-1E14-4D38-994F-2F7B15822933}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BAC919A3-E9BA-4F4D-A841-54CB73C73BF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BAC919A3-E9BA-4F4D-A841-54CB73C73BF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BAC919A3-E9BA-4F4D-A841-54CB73C73BF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BAC919A3-E9BA-4F4D-A841-54CB73C73BF3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
