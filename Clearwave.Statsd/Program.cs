@@ -19,6 +19,7 @@ namespace Clearwave.Statsd
             stats.FlushInterval = int.Parse(ConfigurationManager.AppSettings["statsd_FlushInterval"]);
             stats.PctThreshold = ConfigurationManager.AppSettings["statsd_PctThreshold"].Split(',').Select(x => int.Parse(x)).ToArray();
             stats.FlushToConsole = bool.Parse(ConfigurationManager.AppSettings["statsd_FlushToConsole"]);
+            stats.DeleteIdleStats = bool.Parse(ConfigurationManager.AppSettings["statsd_DeleteIdleStats"]);
             var onFlush = new Action<long, Metrics>((time_stamp, metrics) =>
             {
                 foreach (var item in metrics.gauges)

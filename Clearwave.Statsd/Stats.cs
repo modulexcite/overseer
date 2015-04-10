@@ -13,6 +13,12 @@ namespace Clearwave.Statsd
             FlushInterval = 10 * 1000;
             PctThreshold = new[] { 90 };
             FlushToConsole = false;
+
+            DeleteIdleStats = false;
+            DeleteCounters = false;
+            DeleteTimers = false;
+            DeleteSets = false;
+            DeleteGauges = false;
         }
 
         /// <summary>
@@ -27,12 +33,20 @@ namespace Clearwave.Statsd
         /// </summary>
         public int FlushInterval { get; set; }
         public bool FlushToConsole { get; set; }
+        /// <summary>
+        /// don't send values to graphite for inactive counters, sets, gauges, or timers as opposed to sending 0.
+        /// </summary>
+        public bool DeleteIdleStats { get; set; }
+        public bool DeleteCounters { get; set; }
+        public bool DeleteTimers { get; set; }
+        public bool DeleteSets { get; set; }
+        public bool DeleteGauges { get; set; }
 
         private Dictionary<string, long> counters = new Dictionary<string, long>()
         { 
-            { "packets_received", 0 },
-            { "metrics_received", 0 },
-            { "bad_lines_seen", 0 }
+            { "statsd.packets_received", 0 },
+            { "statsd.metrics_received", 0 },
+            { "statsd.bad_lines_seen", 0 }
         };
 
         private Dictionary<string, List<long>> timers = new Dictionary<string, List<long>>();
@@ -59,7 +73,7 @@ namespace Clearwave.Statsd
             var time_stamp = (long)Math.Round(DateTimeToUnixTimestamp(DateTime.UtcNow)); // seconds
             if (old_timestamp > 0)
             {
-                gauges["timestamp_lag_namespace"] = (time_stamp - old_timestamp - (FlushInterval / 1000));
+                gauges["statsd.timestamp_lag_namespace"] = (time_stamp - old_timestamp - (FlushInterval / 1000));
             }
             old_timestamp = time_stamp;
 
@@ -95,62 +109,89 @@ namespace Clearwave.Statsd
 
             if (FlushToConsole)
             {
+                Console.Clear();
                 Console.WriteLine("Flush=" + time_stamp);
-                Console.WriteLine("gauges (" + metrics.gauges.Count + ")");
-                foreach (var item in metrics.gauges)
-                {
-                    Console.WriteLine("Key={0} Value={1}", item.Key, item.Value);
-                }
-                Console.WriteLine("Counters (" + metrics.counters.Count + ")");
                 foreach (var item in metrics.counters)
                 {
-                    Console.WriteLine("Key={0} Value={1} Rate={2}", item.Key, item.Value, metrics.counter_rates[item.Key]);
+                    Console.WriteLine("stats.counters.{0}.count = {1}", item.Key, item.Value);
+                    Console.WriteLine("stats.counters.{0}.rate = {1}", item.Key, metrics.counter_rates[item.Key]);
                 }
-                Console.WriteLine("sets (" + metrics.sets.Count + ")");
-                foreach (var item in metrics.sets)
-                {
-                    Console.WriteLine("Key={0} Value={1}", item.Key, item.Value.Count);
-                }
-                Console.WriteLine("timers (" + metrics.timers.Count + ")");
                 foreach (var item in metrics.timers)
                 {
-                    Console.WriteLine("Key={0}", item.Key);
-                    foreach (var k in metrics.timer_data[item.Key])
+                    foreach (var data in metrics.timer_data[item.Key])
                     {
-                        Console.WriteLine("       Stat={0} Value={1}", k.Key, k.Value);
+                        Console.WriteLine("stats.timers.{0}.{1} = {2}", item.Key, data.Key, data.Value);
                     }
+                }
+                foreach (var item in metrics.gauges)
+                {
+                    Console.WriteLine("stats.gauges.{0} = {1}", item.Key, item.Value);
+                }
+                foreach (var item in metrics.sets)
+                {
+                    Console.WriteLine("stats.sets.{0}.count = {1}", item.Key, item.Value.Count);
                 }
             }
         }
 
         private void ClearMetrics()
         {
+            var deleteCounters = DeleteIdleStats ? true : DeleteCounters;
+            var deleteTimers = DeleteIdleStats ? true : DeleteTimers;
+            var deleteSets = DeleteIdleStats ? true : DeleteSets;
+            var deleteGauges = DeleteIdleStats ? true : DeleteGauges;
+
             foreach (var key in counters.Keys.ToList())
             {
-                if (key == "packets_received" ||
-                    key == "metrics_received" ||
-                    key == "bad_lines_seen")
+                if (key == "statsd.packets_received" ||
+                    key == "statsd.metrics_received" ||
+                    key == "statsd.bad_lines_seen")
                 {
                     counters[key] = 0;
                     continue;
                 }
-                counters.Remove(key);
+                if (deleteCounters)
+                {
+                    counters.Remove(key);
+                }
+                else
+                {
+                    counters[key] = 0;
+                }
             }
 
             foreach (var key in timers.Keys.ToList())
             {
-                timers.Remove(key);
-                timer_counters.Remove(key);
+                if (deleteTimers)
+                {
+                    timers.Remove(key);
+                    timer_counters.Remove(key);
+                }
+                else
+                {
+                    timers[key].Clear();
+                    timer_counters[key] = 0;
+                }
             }
 
             foreach (var key in sets.Keys.ToList())
             {
-                sets.Remove(key);
+                if (deleteSets)
+                {
+                    sets.Remove(key);
+                }
+                else
+                {
+                    sets.Clear();
+                }
             }
 
             foreach (var key in gauges.Keys.ToList())
             {
-                gauges.Remove(key);
+                if (deleteGauges)
+                {
+                    gauges.Remove(key);
+                }
             }
         }
 
@@ -294,7 +335,7 @@ namespace Clearwave.Statsd
                 // Meters
                 // <metric name>:<value>|m
 
-                counters["packets_received"]++;
+                counters["statsd.packets_received"]++;
 
                 string[] metrics = null;
                 if (packet_data.IndexOf("\n") > -1)
@@ -312,7 +353,7 @@ namespace Clearwave.Statsd
                         continue;
                     }
 
-                    counters["metrics_received"]++;
+                    counters["statsd.metrics_received"]++;
                     var bits = metrics[midx].ToString().Split(':');
                     var key = bits[0];
 
@@ -320,7 +361,7 @@ namespace Clearwave.Statsd
                     var fields = bits[1].Split('|');
                     if (!IsValidPacket(fields))
                     {
-                        counters["bad_lines_seen"]++;
+                        counters["statsd.bad_lines_seen"]++;
                         continue;
                     }
                     if (fields.Length >= 3)
