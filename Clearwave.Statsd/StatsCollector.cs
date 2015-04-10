@@ -102,11 +102,6 @@ namespace Clearwave.Statsd
 
             ProcessMetrics(metrics, FlushInterval, time_stamp);
 
-            if (onFlush != null)
-            {
-                onFlush(time_stamp, metrics);
-            }
-
             if (FlushToConsole)
             {
                 Console.Clear();
@@ -132,6 +127,11 @@ namespace Clearwave.Statsd
                     Console.WriteLine("stats.sets.{0}.count = {1}", item.Key, item.Value.Count);
                 }
                 Console.WriteLine("Flush End=" + time_stamp);
+            }
+
+            if (onFlush != null)
+            {
+                onFlush(time_stamp, metrics);
             }
         }
 
