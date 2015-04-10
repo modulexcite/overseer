@@ -20,7 +20,11 @@ namespace Clearwave.HAProxyTraffic
             collector.FlushToConsole = true;
             collector.PctThreshold = new[] { 90 };
             collector.DeleteIdleStats = false;
-            interval = new Timer(state => collector.FlushMetrics(null), null, collector.FlushInterval, collector.FlushInterval);
+            var onFlush = new Action<long, Metrics>((time_stamp, metrics) =>
+            {
+                Console.WriteLine("Queue Count: " + queue.Count);
+            });
+            interval = new Timer(state => collector.FlushMetrics(onFlush), null, collector.FlushInterval, collector.FlushInterval);
             Console.WriteLine("Flushing every " + collector.FlushInterval + "ms");
         }
 
@@ -90,6 +94,16 @@ timers:
 {route}.bytes
 {route}.tr
                  */
+
+                var packetAge=DateTime.Now.Subtract(accept_date);
+                if (packetAge.TotalMinutes > 1)
+                {
+                    // too old to flush? should we discard?
+                    if (packetAge.TotalMinutes > 2)
+                    {
+                        // way too old to flush? should we discard?
+                    }
+                }
 
                 collector.Handle("traffic._all.hits:1|c");
                 collector.Handle("traffic._all." + status_code.ToString() + ".hits:1|c");
