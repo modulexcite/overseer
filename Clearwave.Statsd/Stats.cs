@@ -10,16 +10,11 @@ namespace Clearwave.Statsd
     {
         public Stats()
         {
-            ListenerPort = 8125;
             FlushInterval = 10 * 1000;
             PctThreshold = new[] { 90 };
             FlushToConsole = false;
         }
 
-        /// <summary>
-        /// port to listen for messages on [default: 8125]
-        /// </summary>
-        public int ListenerPort { get; set; }
         /// <summary>
         /// for time information, calculate the Nth percentile(s)
         /// (can be a single value or list of floating-point values)
@@ -59,7 +54,7 @@ namespace Clearwave.Statsd
             return Epoch.AddSeconds(unixTimeStamp).ToLocalTime();
         }
 
-        public void FlushMetrics(object state)
+        public void FlushMetrics(Action<long, Metrics> onFlush)
         {
             var time_stamp = (long)Math.Round(DateTimeToUnixTimestamp(DateTime.UtcNow)); // seconds
             if (old_timestamp > 0)
@@ -68,11 +63,11 @@ namespace Clearwave.Statsd
             }
             old_timestamp = time_stamp;
 
-            dynamic metrics = null;
+            Metrics metrics = null;
             flushMetricsReaderWriterLock.EnterWriteLock();
             try
             {
-                metrics = new
+                metrics = new Metrics
                 {
                     counters = new Dictionary<string, long>(counters),
                     gauges = new Dictionary<string, long>(gauges),
@@ -90,11 +85,12 @@ namespace Clearwave.Statsd
             {
                 flushMetricsReaderWriterLock.ExitWriteLock();
             }
+
             ProcessMetrics(metrics, FlushInterval, time_stamp);
 
-            foreach (var item in metrics.gauges)
+            if (onFlush != null)
             {
-                MetricsDatabase.RecordGauge((string)item.Key, (int)time_stamp, (long)item.Value);
+                onFlush(time_stamp, metrics);
             }
 
             if (FlushToConsole)
@@ -158,7 +154,7 @@ namespace Clearwave.Statsd
             }
         }
 
-        public static void ProcessMetrics(dynamic metrics, double flushInterval, long ts)
+        public static void ProcessMetrics(Metrics metrics, double flushInterval, long ts)
         {
             var sw = Stopwatch.StartNew();
             var counter_rates = (Dictionary<string, double>)metrics.counter_rates;
