@@ -1,13 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Clearwave.Statsd
 {
@@ -15,11 +10,10 @@ namespace Clearwave.Statsd
     {
         public Stats()
         {
-            ListenerPort = int.Parse(ConfigurationManager.AppSettings["statsd_port"]);
-            FlushInterval = int.Parse(ConfigurationManager.AppSettings["statsd_FlushInterval"]);
-            KeyNameSanitize = bool.Parse(ConfigurationManager.AppSettings["statsd_KeyNameSanitize"]);
-            PctThreshold = ConfigurationManager.AppSettings["statsd_PctThreshold"].Split(',').Select(x => int.Parse(x)).ToArray();
-            FlushToConsole = bool.Parse(ConfigurationManager.AppSettings["statsd_FlushToConsole"]);
+            ListenerPort = 8125;
+            FlushInterval = 10 * 1000;
+            PctThreshold = new[] { 90 };
+            FlushToConsole = false;
         }
 
         /// <summary>
@@ -33,12 +27,6 @@ namespace Clearwave.Statsd
         /// [%, default: 90]
         /// </summary>
         public int[] PctThreshold { get; set; }
-        /// <summary>
-        /// sanitize all stat names on ingress [default: true]
-        /// If disabled, it is up to the backends to sanitize keynames
-        /// as appropriate per their storage requirements.
-        /// </summary>
-        public bool KeyNameSanitize { get; set; }
         /// <summary>
         /// interval (in ms) to flush metrics to each backend - default is 10,000ms
         /// </summary>
@@ -61,22 +49,6 @@ namespace Clearwave.Statsd
 
         private long old_timestamp = 0;
 
-        private string SanitizeKeyName(string key)
-        {
-            if (KeyNameSanitize)
-            {
-                // TODO:
-                //return key.Replace(" ", "_")
-                //          .Replace("/", "-")
-                //          .Replace(/[^a-zA-Z_\-0-9\.]/g, '');
-                return key;
-            }
-            else
-            {
-                return key;
-            }
-        }
-
         private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
         public static double DateTimeToUnixTimestamp(DateTime dateTime)
         {
@@ -85,41 +57,6 @@ namespace Clearwave.Statsd
         public static DateTime UnixTimeStampToDateTime(double unixTimeStamp)
         {
             return Epoch.AddSeconds(unixTimeStamp).ToLocalTime();
-        }
-
-        private Timer interval;
-
-        public void Start()
-        {
-            if (interval != null)
-            {
-                throw new InvalidOperationException("Already Started!");
-            }
-            interval = new Timer(FlushMetrics, null, FlushInterval, FlushInterval);
-
-            Task.Run(() =>
-            {
-                using (var udpClient = new UdpClient(ListenerPort))
-                {
-                    while (true)
-                    {
-                        var remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
-                        var receiveBuffer = udpClient.Receive(ref remoteEndPoint);
-                        try
-                        {
-                            var packet = Encoding.ASCII.GetString(receiveBuffer);
-                            Handle(packet);
-                        }
-                        catch (Exception e)
-                        {
-                            // TODO: log exception
-                            Console.Write("Exception Handling Packet: " + e.Message);
-                        }
-                    }
-                }
-            });
-
-            Console.Write("Listener Started on Port: " + ListenerPort);
         }
 
         public void FlushMetrics(object state)
@@ -221,7 +158,7 @@ namespace Clearwave.Statsd
             }
         }
 
-        public static void ProcessMetrics(dynamic metrics, int flushInterval, long ts)
+        public static void ProcessMetrics(dynamic metrics, double flushInterval, long ts)
         {
             var sw = Stopwatch.StartNew();
             var counter_rates = (Dictionary<string, double>)metrics.counter_rates;
@@ -235,10 +172,10 @@ namespace Clearwave.Statsd
 
             foreach (var key in counters.Keys)
             {
-                var value = counters[key];
+                var value = (double)counters[key];
 
                 // calculate "per second" rate
-                counter_rates[key] = value / (flushInterval / 1000);
+                counter_rates[key] = Math.Round(value / (flushInterval / 1000d));
             }
 
             foreach (var key in timers.Keys)
@@ -293,7 +230,7 @@ namespace Clearwave.Statsd
                                 sumSquares = cumulSumSquaresValues[count - 1] -
                                   cumulSumSquaresValues[count - numInThreshold - 1];
                             }
-                            mean = sum / numInThreshold;
+                            mean = (long)Math.Round((double)sum / (double)numInThreshold);
                         }
 
                         var clean_pct = "" + pct;
@@ -307,7 +244,7 @@ namespace Clearwave.Statsd
 
                     sum = cumulativeValues[count - 1];
                     sumSquares = cumulSumSquaresValues[count - 1];
-                    mean = sum / count;
+                    mean = (long)Math.Round((double)sum / (double)count);
 
                     long sumOfDiffs = 0;
                     for (var i = 0; i < count; i++)
@@ -315,15 +252,15 @@ namespace Clearwave.Statsd
                         sumOfDiffs += (values[i] - mean) * (values[i] - mean);
                     }
 
-                    var mid = (int)Math.Floor(count / 2d);
+                    var mid = (int)Math.Floor((double)count / 2d);
                     var median = (count % 2) > 0 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
 
-                    var stddev = Math.Sqrt(sumOfDiffs / count);
+                    var stddev = Math.Sqrt(Math.Round((double)sumOfDiffs / (double)count));
                     current_timer_data["std"] = (long)stddev;
                     current_timer_data["upper"] = max;
                     current_timer_data["lower"] = min;
                     current_timer_data["count"] = timer_counters[key];
-                    current_timer_data["count_ps"] = timer_counters[key] / (flushInterval / 1000);
+                    current_timer_data["count_ps"] = (long)Math.Round((double)timer_counters[key] / (flushInterval / 1000d));
                     current_timer_data["sum"] = sum;
                     current_timer_data["sum_squares"] = sumSquares;
                     current_timer_data["mean"] = mean;
@@ -381,7 +318,7 @@ namespace Clearwave.Statsd
 
                     counters["metrics_received"]++;
                     var bits = metrics[midx].ToString().Split(':');
-                    var key = SanitizeKeyName(bits[0]);
+                    var key = bits[0];
 
                     var sampleRate = 1d;
                     var fields = bits[1].Split('|');
@@ -404,7 +341,7 @@ namespace Clearwave.Statsd
                             timer_counters[key] = 0;
                         }
                         timers[key].Add(long.Parse(fields[0]));
-                        timer_counters[key] += (long)(1 / sampleRate);
+                        timer_counters[key] += (long)(1d / sampleRate);
                     }
                     else if (metric_type == "g")
                     {
@@ -431,7 +368,7 @@ namespace Clearwave.Statsd
                         {
                             counters[key] = 0;
                         }
-                        counters[key] += (long)Math.Round(double.Parse(fields[0]) * (1 / sampleRate));
+                        counters[key] += (long)Math.Round(double.Parse(fields[0]) * (1d / sampleRate));
                     }
                 }
             }
