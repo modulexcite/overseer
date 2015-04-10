@@ -173,6 +173,6 @@ timers:
         private static Regex haproxyRegex =
             new Regex(
                 @"^(<\d+>)(\w+ \d+ \S+) (\S+) (\S+) (\S+)\[(\d+)\]: (\S+):(\d+) \[(\S+)\] (\S+) (\S+)\/(\S+) (\S+) (\S+) (\S+) *(\S+) (\S+) (\S+) (\S+) (\S+) \{([^}]*)\} \{([^}]*)\} ""(\S+) ([^""]+) (\S+)"".*$"
-                , RegexOptions.IgnoreCase | RegexOptions.Compiled);
+                , RegexOptions.Compiled);
     }
 }
