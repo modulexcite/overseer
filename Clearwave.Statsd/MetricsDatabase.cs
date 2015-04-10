@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
@@ -7,12 +8,12 @@ using System.Text;
 using System.Threading.Tasks;
 using Dapper;
 
-namespace Clearwave.Overseer
+namespace Clearwave.Statsd
 {
     public static class MetricsDatabase
     {
-        public static string ConnectionString = "server=localhost;database=Overseer;trusted_connection=true";
-        public static string SchemaName = "dbo";
+        public static string ConnectionString = ConfigurationManager.ConnectionStrings["MetricsDatabase"].ConnectionString;
+        public static string SchemaName = ConfigurationManager.AppSettings["MetricsDatabase_Schema"];
 
         private static SqlConnection GetOpenSqlConnection()
         {

@@ -50,7 +50,7 @@ namespace Clearwave.Overseer.WatchGuard
                         gateway.Tunnels.Add(tunnel);
                     }
 
-                    tunnel.CreatedTime = Stats.UnixTimeStampToDateTime(double.Parse(item.Element("created_time").Value));
+                    //tunnel.CreatedTime = Stats.UnixTimeStampToDateTime(double.Parse(item.Element("created_time").Value));
                     tunnel.received_total_nbytes = long.Parse(item.Element("total_nbytes").Value);
                     tunnel.received_total_npkts = long.Parse(item.Element("total_npkts").Value);
                     tunnel.total_rekeys = int.Parse(item.Element("total_rekeys").Value);
@@ -73,7 +73,7 @@ namespace Clearwave.Overseer.WatchGuard
                         gateway.Tunnels.Add(tunnel);
                     }
 
-                    tunnel.CreatedTime = Stats.UnixTimeStampToDateTime(double.Parse(item.Element("created_time").Value));
+                    //tunnel.CreatedTime = Stats.UnixTimeStampToDateTime(double.Parse(item.Element("created_time").Value));
                     tunnel.sent_total_nbytes = long.Parse(item.Element("total_nbytes").Value);
                     tunnel.sent_total_npkts = long.Parse(item.Element("total_npkts").Value);
                     tunnel.total_rekeys = int.Parse(item.Element("total_rekeys").Value);

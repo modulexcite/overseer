@@ -1,23 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Clearwave.Overseer
+namespace Clearwave.Statsd
 {
     public class Stats
     {
         public Stats()
         {
-            FlushInterval = 10000;
-            KeyNameSanitize = true;
-            PctThreshold = new int[] { 90 };
-            FlushToConsole = false;
+            ListenerPort = int.Parse(ConfigurationManager.AppSettings["statsd_port"]);
+            FlushInterval = int.Parse(ConfigurationManager.AppSettings["statsd_FlushInterval"]);
+            KeyNameSanitize = bool.Parse(ConfigurationManager.AppSettings["statsd_KeyNameSanitize"]);
+            PctThreshold = ConfigurationManager.AppSettings["statsd_PctThreshold"].Split(',').Select(x => int.Parse(x)).ToArray();
+            FlushToConsole = bool.Parse(ConfigurationManager.AppSettings["statsd_FlushToConsole"]);
         }
 
+        /// <summary>
+        /// port to listen for messages on [default: 8125]
+        /// </summary>
+        public int ListenerPort { get; set; }
         /// <summary>
         /// for time information, calculate the Nth percentile(s)
         /// (can be a single value or list of floating-point values)
@@ -88,6 +96,30 @@ namespace Clearwave.Overseer
                 throw new InvalidOperationException("Already Started!");
             }
             interval = new Timer(FlushMetrics, null, FlushInterval, FlushInterval);
+
+            Task.Run(() =>
+            {
+                using (var udpClient = new UdpClient(ListenerPort))
+                {
+                    while (true)
+                    {
+                        var remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
+                        var receiveBuffer = udpClient.Receive(ref remoteEndPoint);
+                        try
+                        {
+                            var packet = Encoding.ASCII.GetString(receiveBuffer);
+                            Handle(packet);
+                        }
+                        catch (Exception e)
+                        {
+                            // TODO: log exception
+                            Console.Write("Exception Handling Packet: " + e.Message);
+                        }
+                    }
+                }
+            });
+
+            Console.Write("Listener Started on Port: " + ListenerPort);
         }
 
         public void FlushMetrics(object state)

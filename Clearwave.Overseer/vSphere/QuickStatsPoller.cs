@@ -28,7 +28,7 @@ namespace Clearwave.Overseer.vSphere
             interval = new Timer(HandleTimerInterval, null, 0, intervalInMS);
         }
 
-        private bool needRetryLogin = false;
+        private bool needRetryLogin = true;
 
         private void HandleTimerInterval(object state)
         {
