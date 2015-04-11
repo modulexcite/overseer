@@ -88,14 +88,11 @@ namespace Clearwave.HAProxyTraffic
                 var captured_response_headers = log.Groups[21].Value;
                 var http_method = log.Groups[22].Value;
                 var http_path = log.Groups[23].Value;
-                /*
-                 * counters:
-{route}.hits
-{route}.{responsecode}.hits
-timers:
-{route}.bytes
-{route}.tr
-                 */
+
+                if (req_head_Host.Length == 0)
+                {
+                    req_head_Host = "unknown";
+                }
 
                 var packetAge = DateTime.Now.Subtract(accept_date);
                 if (packetAge.TotalMinutes > 1)
@@ -107,7 +104,16 @@ timers:
                     }
                 }
 
-                collector.Handle("haproxy.logs._all.hits:1|c\nhaproxy.logs._all." + status_code.ToString() + ".hits:1|c\nhaproxy.logs._all.bytes_read:" + bytes_read + "|ms\nhaproxy.logs._all.tr:" + tr + "|ms");
+                var stats =
+@"haproxy.logs.route._all.hits:1|c
+haproxy.logs.route._all.status_code." + status_code.ToString() + @".hits:1|c
+haproxy.logs.route._all.bytes_read:" + bytes_read + @"|ms
+haproxy.logs.route._all.tr:" + tr + @"|ms
+haproxy.logs.host." + req_head_Host + @"._all.hits:1|c
+haproxy.logs.host." + req_head_Host + @"._all.bytes_read:" + bytes_read + @"|ms
+haproxy.logs.host." + req_head_Host + @"._all.tr:" + tr + @"|ms
+";
+                collector.Handle(stats);
             }
         }
 
