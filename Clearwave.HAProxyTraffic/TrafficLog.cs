@@ -69,21 +69,21 @@ namespace Clearwave.HAProxyTraffic
             var log = haproxyRegex.Match(packet);
             if (log.Success)
             {
-                var haproxy_name = log.Groups[4].Value;
-                var client_ip = log.Groups[7].Value;
-                var accept_date = DateTime.ParseExact(log.Groups[9].Value, "dd/MMM/yyyy:HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                var frontend_name = log.Groups[10].Value;
-                var backend_name = log.Groups[11].Value;
-                var server_name = log.Groups[12].Value;
-                var timers = log.Groups[13].Value;
+                var haproxy_name = log.Groups[3].Value;
+                var client_ip = log.Groups[6].Value;
+                var accept_date = DateTime.ParseExact(log.Groups[8].Value, "dd/MMM/yyyy:HH:mm:ss.fff", CultureInfo.InvariantCulture);
+                var frontend_name = log.Groups[9].Value;
+                var backend_name = log.Groups[10].Value;
+                var server_name = log.Groups[11].Value;
+                var timers = log.Groups[12].Value;
                 var tr = int.Parse(timers.Split('/')[3]);
-                var status_code = int.Parse(log.Groups[14].Value);
-                var bytes_read = int.Parse(log.Groups[15].Value);
-                var terminationState = log.Groups[18].Value;
-                var req_head = log.Groups[21].Value;
-                var res_head = log.Groups[22].Value;
-                var http_method = log.Groups[23].Value;
-                var http_path = log.Groups[24].Value;
+                var status_code = int.Parse(log.Groups[13].Value);
+                var bytes_read = int.Parse(log.Groups[14].Value);
+                var terminationState = log.Groups[17].Value;
+                var req_head = log.Groups[20].Value;
+                var res_head = log.Groups[21].Value;
+                var http_method = log.Groups[22].Value;
+                var http_path = log.Groups[23].Value;
                 /*
                  * counters:
 {route}.hits
@@ -142,34 +142,33 @@ timers:
 
         // Group 01 = <165>
         // Group 02 = Apr 10 13:40:03
-        // Group 03 = ATL-LB01
-        // Group 04 = atl-lb01.prod.clearwaveinc.com
-        // Group 05 = haproxy
-        // Group 06 = 13927
-        // Group 07 = 70.88.217.41
-        // Group 08 = 61709
-        // Group 09 = 10/Apr/2015:08:09:20.593
-        // Group 10 = http-web~
-        // Group 11 = http-web
-        // Group 12 = atl-web02
-        // Group 13 = 50/0/0/32/82   = Tq '/' Tw '/' Tc '/' Tr '/' Tt*
-        // Group 14 = 200  status_code
-        // Group 15 = 354  bytes_read
+        // Group 03 = atl-lb01.prod.clearwaveinc.com
+        // Group 04 = haproxy
+        // Group 05 = 13927
+        // Group 06 = 70.88.217.41
+        // Group 07 = 61709
+        // Group 08 = 10/Apr/2015:08:09:20.593
+        // Group 09 = http-web~
+        // Group 10 = http-web
+        // Group 11 = atl-web02
+        // Group 12 = 50/0/0/32/82   = Tq '/' Tw '/' Tc '/' Tr '/' Tt*
+        // Group 13 = 200  status_code
+        // Group 14 = 354  bytes_read
+        // Group 15 = -
         // Group 16 = -
-        // Group 17 = -
-        // Group 18 = ---- = termination_state
-        // Group 19 = 932/918/4/4/0 = actconn '/' feconn '/' beconn '/' srv_conn '/' retries*
-        // Group 20 = 0/0 = srv_queue '/' backend_queue
-        // Group 21 = https://secure.clearwaveinc.com/v2.5/ProviderPortal/VisitList/Al|lla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko|secure.clearwaveinc.com||gzip, deflate
-        // Group 22 = gzip
-        // Group 23 = GET
-        // Group 24 = /v2.5/ProviderPortal/VisitList/RefreshTabs?date=Fri+Apr+10+2015&fMultipleLocations=true&_=1428667760826
-        // Group 25 = HTTP/1.1
+        // Group 17 = ---- = termination_state
+        // Group 18 = 932/918/4/4/0 = actconn '/' feconn '/' beconn '/' srv_conn '/' retries*
+        // Group 19 = 0/0 = srv_queue '/' backend_queue
+        // Group 20 = https://secure.clearwaveinc.com/v2.5/ProviderPortal/VisitList/Al|lla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko|secure.clearwaveinc.com||gzip, deflate
+        // Group 21 = gzip
+        // Group 22 = GET
+        // Group 23 = /v2.5/ProviderPortal/VisitList/RefreshTabs?date=Fri+Apr+10+2015&fMultipleLocations=true&_=1428667760826
+        // Group 24 = HTTP/1.1
 
 
         private static Regex haproxyRegex =
             new Regex(
-                @"^(<\d+>)(\w+ \d+ \S+) (\S+) (\S+) (\S+)\[(\d+)\]: (\S+):(\d+) \[(\S+)\] (\S+) (\S+)\/(\S+) (\S+) (\S+) (\S+) *(\S+) (\S+) (\S+) (\S+) (\S+) \{([^}]*)\} \{([^}]*)\} ""(\S+) ([^""]+) (\S+)"".*$"
+                @"^(<\d+>)(\w+ \d+ \S+) (\S+) (\S+)\[(\d+)\]: (\S+):(\d+) \[(\S+)\] (\S+) (\S+)\/(\S+) (\S+) (\S+) (\S+) *(\S+) (\S+) (\S+) (\S+) (\S+) \{([^}]*)\} \{([^}]*)\} ""(\S+) ([^""]+) (\S+)"".*$"
                 , RegexOptions.Compiled);
     }
 }
