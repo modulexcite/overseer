@@ -103,7 +103,7 @@ timers:
                     }
                 }
 
-                collector.Handle("traffic._all.hits:1|c\ntraffic._all." + status_code.ToString() + ".hits:1|c\ntraffic._all.bytes_read:" + bytes_read + "|ms\ntraffic._all.tr:" + tr + "|ms");
+                collector.Handle("haproxy.logs._all.hits:1|c\nhaproxy.logs._all." + status_code.ToString() + ".hits:1|c\nhaproxy.logs._all.bytes_read:" + bytes_read + "|ms\nhaproxy.logs._all.tr:" + tr + "|ms");
             }
         }
 
