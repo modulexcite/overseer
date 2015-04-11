@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -17,7 +18,7 @@ namespace Clearwave.HAProxyTraffic
         {
             collector = new StatsCollector();
             collector.FlushInterval = 60 * 1000; // 1 minute
-            collector.FlushToConsole = true;
+            collector.FlushToConsole = bool.Parse(ConfigurationManager.AppSettings["statsd_FlushToConsole"]);
             collector.PctThreshold = new[] { 90 };
             collector.DeleteIdleStats = false;
             collector.BeforeFlush = () =>
@@ -80,8 +81,11 @@ namespace Clearwave.HAProxyTraffic
                 var status_code = int.Parse(log.Groups[13].Value);
                 var bytes_read = int.Parse(log.Groups[14].Value);
                 var terminationState = log.Groups[17].Value;
-                var req_head = log.Groups[20].Value;
-                var res_head = log.Groups[21].Value;
+                var captured_request_headers = log.Groups[20].Value.Split('|');
+                var req_head_Referer = captured_request_headers[0];
+                var req_head_UserAgent = captured_request_headers[1];
+                var req_head_Host = captured_request_headers[2];
+                var captured_response_headers = log.Groups[21].Value;
                 var http_method = log.Groups[22].Value;
                 var http_path = log.Groups[23].Value;
                 /*
@@ -164,6 +168,13 @@ timers:
         // Group 22 = GET
         // Group 23 = /v2.5/ProviderPortal/VisitList/RefreshTabs?date=Fri+Apr+10+2015&fMultipleLocations=true&_=1428667760826
         // Group 24 = HTTP/1.1
+
+        // request headers
+        // capture request header Referer               len 64
+        // capture request header User-Agent            len 128
+        // capture request header Host                  len 64
+        // capture request header X-Forwarded-For       len 64
+        // capture request header Accept-Encoding       len 64
 
 
         private static Regex haproxyRegex =
