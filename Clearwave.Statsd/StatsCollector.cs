@@ -379,30 +379,67 @@ namespace Clearwave.Statsd
 
                     var sampleRate = 1d;
                     var fields = bits[1].Split('|');
-                    if (!IsValidPacket(fields))
+
+                    // filter out malformed packets
+                    if (fields == null || fields.Length < 2)
                     {
                         counters["statsd.bad_lines_seen"]++;
                         continue;
                     }
+
+                    // filter out malformed sample rates
                     if (fields.Length >= 3)
                     {
-                        sampleRate = double.Parse(fields[2].Substring(1));
+                        var _sampleRate = fields[2];
+                        if (_sampleRate.Length > 1 && _sampleRate[0] == '@')
+                        {
+                            _sampleRate = _sampleRate.Substring(1);
+                            if (!double.TryParse(_sampleRate, out sampleRate) || sampleRate < 0)
+                            {
+                                counters["statsd.bad_lines_seen"]++;
+                                continue;
+                            }
+                        }
                     }
 
                     var metric_type = fields[1].Trim();
+                    long value = 0;
+
+                    // filter out malformed metric values
+                    switch (metric_type)
+                    {
+                        case "s":
+                            break;
+                        case "ms":
+                            if (!long.TryParse(fields[0], out value) || value < 0)
+                            {
+                                counters["statsd.bad_lines_seen"]++;
+                                continue;
+                            }
+                            break;
+                        case "g":
+                        default:
+                            if (!long.TryParse(fields[0], out value))
+                            {
+                                counters["statsd.bad_lines_seen"]++;
+                                continue;
+                            }
+                            break;
+                    }
+
                     if (metric_type == "ms")
                     {
-                        AddToTimer(key, long.Parse(fields[0]), sampleRate);
+                        AddToTimer(key, value, sampleRate);
                     }
                     else if (metric_type == "g")
                     {
                         if (gauges.ContainsKey(key) && (fields[0].StartsWith("+") || fields[0].StartsWith("-")))
                         {
-                            AddToGauge(key, int.Parse(fields[0]));
+                            AddToGauge(key, (int)value);
                         }
                         else
                         {
-                            SetGauge(key, int.Parse(fields[0]));
+                            SetGauge(key, (int)value);
                         }
                     }
                     else if (metric_type == "s")
@@ -411,7 +448,7 @@ namespace Clearwave.Statsd
                     }
                     else
                     {
-                        AddToCounter(key, long.Parse(fields[0]), sampleRate);
+                        AddToCounter(key, value, sampleRate);
                     }
                 }
             });
@@ -479,60 +516,6 @@ namespace Clearwave.Statsd
                 sets[key] = new HashSet<string>();
             }
             sets[key].Add(value);
-        }
-
-        private static bool IsDouble(string str)
-        {
-            double num = 0;
-            return double.TryParse(str, out num);
-        }
-
-        private static bool IsInteger(string str)
-        {
-            long num = 0;
-            return long.TryParse(str, out num);
-        }
-
-        private static bool IsValidSampleRate(string str)
-        {
-            var validSampleRate = false;
-            if (str.Length > 1 && str[0] == '@')
-            {
-                var numberStr = str.Substring(1);
-                validSampleRate = IsDouble(numberStr) && numberStr[0] != '-';
-            }
-            return validSampleRate;
-        }
-
-        private static bool IsValidPacket(string[] fields)
-        {
-            // test for existing metrics type
-            if (fields == null || fields.Length < 2)
-            {
-                return false;
-            }
-
-            // filter out malformed sample rates
-            if (fields.Length >= 3)
-            {
-                if (!IsValidSampleRate(fields[2]))
-                {
-                    return false;
-                }
-            }
-
-            // filter out invalid metrics values
-            switch (fields[1])
-            {
-                case "s":
-                    return true;
-                case "g":
-                    return IsInteger(fields[0]);
-                case "ms":
-                    return IsInteger(fields[0]) && long.Parse(fields[0]) >= 0;
-                default:
-                    return IsInteger(fields[0]);
-            }
         }
     }
 }
