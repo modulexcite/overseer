@@ -90,6 +90,12 @@ namespace Clearwave.HAProxyTraffic
 
                 var terminationState = log.Groups[17].Value;
 
+                var conn = log.Groups[18].Value.Split('/');
+                var actconn = int.Parse(conn[0]);
+                var feconn = int.Parse(conn[1]);
+                var beconn = int.Parse(conn[2]);
+                var srv_conn = int.Parse(conn[3]);
+
                 var captured_request_headers = log.Groups[20].Value.Split('|');
                 var req_head_UserAgent = captured_request_headers[0];
                 var req_head_Host = captured_request_headers[1];
@@ -131,7 +137,11 @@ namespace Clearwave.HAProxyTraffic
                     collector.AddToTimer("haproxy.logs.route._all.SqlDurationMs", sql_dur);
                     collector.AddToTimer("haproxy.logs.route._all.AspNetDurationMs", aspnet_dur);
                     collector.AddToSet("haproxy.logs.routes", "_all");
-                    collector.IncrementMetricsReceived(8);
+                    collector.SetGauge("haproxy.logs.actconn", actconn);
+                    collector.SetGauge("haproxy.logs.feconn." + frontend_name, feconn);
+                    collector.SetGauge("haproxy.logs.beconn." + backend_name, beconn);
+                    collector.SetGauge("haproxy.logs.srv_conn."+server_name, srv_conn);
+                    collector.IncrementMetricsReceived(12);
                     if (!string.IsNullOrWhiteSpace(res_route_name))
                     {
                         var name = res_route_name;
