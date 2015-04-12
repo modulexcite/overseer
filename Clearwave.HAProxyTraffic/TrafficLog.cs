@@ -131,7 +131,8 @@ namespace Clearwave.HAProxyTraffic
                     collector.AddToCounter("haproxy.logs.route._all.SqlCount", sql_count);
                     collector.AddToTimer("haproxy.logs.route._all.SqlDurationMs", sql_dur);
                     collector.AddToTimer("haproxy.logs.route._all.AspNetDurationMs", aspnet_dur);
-                    collector.IncrementMetricsReceived(4);
+                    collector.AddToSet("haproxy.logs.routes", "_all");
+                    collector.IncrementMetricsReceived(8);
                     if (!string.IsNullOrWhiteSpace(res_route_name))
                     {
                         var name = res_route_name;
@@ -147,13 +148,16 @@ namespace Clearwave.HAProxyTraffic
                         collector.AddToCounter("haproxy.logs.route." + name + ".SqlCount", sql_count);
                         collector.AddToTimer("haproxy.logs.route." + name + ".SqlDurationMs", sql_dur);
                         collector.AddToTimer("haproxy.logs.route." + name + ".AspNetDurationMs", aspnet_dur);
+                        collector.AddToSet("haproxy.logs.routes", name);
+                        collector.IncrementMetricsReceived(8);
                     }
                     if (!string.IsNullOrWhiteSpace(req_head_Host))
                     {
                         collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".hits", 1);
                         collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".bytes_read", bytes_read);
                         collector.AddToTimer("haproxy.logs.host." + req_head_Host + ".tr", tr);
-                        collector.IncrementMetricsReceived(3);
+                        collector.AddToSet("haproxy.logs.host", req_head_Host);
+                        collector.IncrementMetricsReceived(4);
                     }
                 });
             }
