@@ -77,19 +77,31 @@ namespace Clearwave.HAProxyTraffic
                 var haproxy_name = log.Groups[3].Value;
                 var client_ip = log.Groups[6].Value;
                 var accept_date = DateTime.ParseExact(log.Groups[8].Value, "dd/MMM/yyyy:HH:mm:ss.fff", CultureInfo.InvariantCulture);
+
                 var frontend_name = log.Groups[9].Value;
                 var backend_name = log.Groups[10].Value;
                 var server_name = log.Groups[11].Value;
+
                 var timers = log.Groups[12].Value;
                 var tr = int.Parse(timers.Split('/')[3]);
+
                 var status_code = int.Parse(log.Groups[13].Value);
                 var bytes_read = int.Parse(log.Groups[14].Value);
+
                 var terminationState = log.Groups[17].Value;
+
                 var captured_request_headers = log.Groups[20].Value.Split('|');
                 var req_head_Referer = captured_request_headers[0];
                 var req_head_UserAgent = captured_request_headers[1];
                 var req_head_Host = captured_request_headers[2];
-                var captured_response_headers = log.Groups[21].Value;
+
+                var captured_response_headers = log.Groups[21].Value.Split('|');
+                var res_route_name = captured_response_headers[0];
+                var res_sql_count = captured_response_headers[1];
+                var res_sql_dur = captured_response_headers[2];
+                var res_aspnet_dur = captured_response_headers[3];
+                var res_app_id = captured_response_headers[4];
+
                 var http_method = log.Groups[22].Value;
                 var http_path = log.Groups[23].Value;
 
@@ -103,13 +115,39 @@ namespace Clearwave.HAProxyTraffic
                     }
                 }
 
+                int sql_count = 0;
+                int sql_dur = 0;
+                int aspnet_dur = 0;
+                if (res_sql_count.Length > 0) { sql_count = int.Parse(res_sql_count); }
+                if (res_sql_dur.Length > 0) { sql_dur = int.Parse(res_sql_dur); }
+                if (res_aspnet_dur.Length > 0) { aspnet_dur = int.Parse(res_aspnet_dur); }
+
                 collector.InReadLock(() =>
                 {
                     collector.AddToCounter("haproxy.logs.route._all.hits", 1);
                     collector.AddToCounter("haproxy.logs.route._all.status_code." + status_code.ToString() + ".hits", 1);
                     collector.AddToCounter("haproxy.logs.route._all.bytes_read", bytes_read);
                     collector.AddToCounter("haproxy.logs.route._all.tr", tr);
+                    collector.AddToCounter("haproxy.logs.route._all.SqlCount", sql_count);
+                    collector.AddToCounter("haproxy.logs.route._all.SqlDurationMs", sql_dur);
+                    collector.AddToCounter("haproxy.logs.route._all.AspNetDurationMs", aspnet_dur);
                     collector.IncrementMetricsReceived(4);
+                    if (!string.IsNullOrWhiteSpace(res_route_name))
+                    {
+                        var name = res_route_name;
+                        if (!string.IsNullOrWhiteSpace(res_app_id))
+                        {
+                            name = res_app_id + "." + name;
+                        }
+                        name = name.Replace('.', '_');
+                        collector.AddToCounter("haproxy.logs.route." + name + ".hits", 1);
+                        collector.AddToCounter("haproxy.logs.route." + name + ".status_code." + status_code.ToString() + ".hits", 1);
+                        collector.AddToCounter("haproxy.logs.route." + name + ".bytes_read", bytes_read);
+                        collector.AddToCounter("haproxy.logs.route." + name + ".tr", tr);
+                        collector.AddToCounter("haproxy.logs.route." + name + ".SqlCount", sql_count);
+                        collector.AddToCounter("haproxy.logs.route." + name + ".SqlDurationMs", sql_dur);
+                        collector.AddToCounter("haproxy.logs.route." + name + ".AspNetDurationMs", aspnet_dur);
+                    }
                     if (!string.IsNullOrWhiteSpace(req_head_Host))
                     {
                         collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".hits", 1);
@@ -173,18 +211,22 @@ namespace Clearwave.HAProxyTraffic
         // Group 17 = ---- = termination_state
         // Group 18 = 932/918/4/4/0 = actconn '/' feconn '/' beconn '/' srv_conn '/' retries*
         // Group 19 = 0/0 = srv_queue '/' backend_queue
-        // Group 20 = https://secure.clearwaveinc.com/v2.5/ProviderPortal/VisitList/Al|lla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko|secure.clearwaveinc.com||gzip, deflate
-        // Group 21 = gzip
+        // Group 20 = https://secure.clearwaveinc.com/v2.5/ProviderPortal/VisitList/Al|lla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko|secure.clearwaveinc.com|
+        // Group 21 = {||||}
         // Group 22 = GET
         // Group 23 = /v2.5/ProviderPortal/VisitList/RefreshTabs?date=Fri+Apr+10+2015&fMultipleLocations=true&_=1428667760826
         // Group 24 = HTTP/1.1
 
         // request headers
-        // capture request header Referer               len 64
         // capture request header User-Agent            len 128
         // capture request header Host                  len 64
         // capture request header X-Forwarded-For       len 64
-        // capture request header Accept-Encoding       len 64
+        // capture response header X-Route-Name         len 96
+        // capture response header X-Sql-Count          len 4
+        // capture response header X-Sql-Duration-Ms    len 7
+        // capture response header X-AspNet-Duration-Ms len 7
+        // capture response header X-Application-Id     len 5
+
 
 
         private static Regex haproxyRegex =
