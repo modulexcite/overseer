@@ -127,10 +127,10 @@ namespace Clearwave.HAProxyTraffic
                     collector.AddToCounter("haproxy.logs.route._all.hits", 1);
                     collector.AddToCounter("haproxy.logs.route._all.status_code." + status_code.ToString() + ".hits", 1);
                     collector.AddToCounter("haproxy.logs.route._all.bytes_read", bytes_read);
-                    collector.AddToCounter("haproxy.logs.route._all.tr", tr);
+                    collector.AddToTimer("haproxy.logs.route._all.tr", tr);
                     collector.AddToCounter("haproxy.logs.route._all.SqlCount", sql_count);
-                    collector.AddToCounter("haproxy.logs.route._all.SqlDurationMs", sql_dur);
-                    collector.AddToCounter("haproxy.logs.route._all.AspNetDurationMs", aspnet_dur);
+                    collector.AddToTimer("haproxy.logs.route._all.SqlDurationMs", sql_dur);
+                    collector.AddToTimer("haproxy.logs.route._all.AspNetDurationMs", aspnet_dur);
                     collector.IncrementMetricsReceived(4);
                     if (!string.IsNullOrWhiteSpace(res_route_name))
                     {
@@ -143,16 +143,16 @@ namespace Clearwave.HAProxyTraffic
                         collector.AddToCounter("haproxy.logs.route." + name + ".hits", 1);
                         collector.AddToCounter("haproxy.logs.route." + name + ".status_code." + status_code.ToString() + ".hits", 1);
                         collector.AddToCounter("haproxy.logs.route." + name + ".bytes_read", bytes_read);
-                        collector.AddToCounter("haproxy.logs.route." + name + ".tr", tr);
+                        collector.AddToTimer("haproxy.logs.route." + name + ".tr", tr);
                         collector.AddToCounter("haproxy.logs.route." + name + ".SqlCount", sql_count);
-                        collector.AddToCounter("haproxy.logs.route." + name + ".SqlDurationMs", sql_dur);
-                        collector.AddToCounter("haproxy.logs.route." + name + ".AspNetDurationMs", aspnet_dur);
+                        collector.AddToTimer("haproxy.logs.route." + name + ".SqlDurationMs", sql_dur);
+                        collector.AddToTimer("haproxy.logs.route." + name + ".AspNetDurationMs", aspnet_dur);
                     }
                     if (!string.IsNullOrWhiteSpace(req_head_Host))
                     {
                         collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".hits", 1);
                         collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".bytes_read", bytes_read);
-                        collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".tr", tr);
+                        collector.AddToTimer("haproxy.logs.host." + req_head_Host + ".tr", tr);
                         collector.IncrementMetricsReceived(3);
                     }
                 });
