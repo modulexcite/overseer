@@ -338,8 +338,7 @@ namespace Clearwave.Statsd
 
         public void Handle(string packet_data)
         {
-            flushMetricsReaderWriterLock.EnterReadLock();
-            try
+            InReadLock(() =>
             {
                 // Guages
                 // <metric name>:<value>|g
@@ -374,7 +373,7 @@ namespace Clearwave.Statsd
                         continue;
                     }
 
-                    counters["statsd.metrics_received"]++;
+                    IncrementMetricsReceived();
                     var bits = metrics[midx].ToString().Split(':');
                     var key = bits[0];
 
@@ -393,47 +392,93 @@ namespace Clearwave.Statsd
                     var metric_type = fields[1].Trim();
                     if (metric_type == "ms")
                     {
-                        if (!timers.ContainsKey(key))
-                        {
-                            timers[key] = new List<long>();
-                            timer_counters[key] = 0;
-                        }
-                        timers[key].Add(long.Parse(fields[0]));
-                        timer_counters[key] += (long)(1d / sampleRate);
+                        AddToTimer(key, long.Parse(fields[0]), sampleRate);
                     }
                     else if (metric_type == "g")
                     {
                         if (gauges.ContainsKey(key) && (fields[0].StartsWith("+") || fields[0].StartsWith("-")))
                         {
-                            gauges[key] += int.Parse(fields[0]);
+                            AddToGauge(key, int.Parse(fields[0]));
                         }
                         else
                         {
-                            gauges[key] = int.Parse(fields[0]);
+                            SetGauge(key, int.Parse(fields[0]));
                         }
                     }
                     else if (metric_type == "s")
                     {
-                        if (!sets.ContainsKey(key))
-                        {
-                            sets[key] = new HashSet<string>();
-                        }
-                        sets[key].Add(fields[0]);
+                        AddToSet(key, fields[0]);
                     }
                     else
                     {
-                        if (!counters.ContainsKey(key))
-                        {
-                            counters[key] = 0;
-                        }
-                        counters[key] += (long)Math.Round(double.Parse(fields[0]) * (1d / sampleRate));
+                        AddToCounter(key, long.Parse(fields[0]), sampleRate);
                     }
                 }
+            });
+        }
+
+        public void InReadLock(Action action)
+        {
+            flushMetricsReaderWriterLock.EnterReadLock();
+            try
+            {
+                action();
             }
             finally
             {
                 flushMetricsReaderWriterLock.ExitReadLock();
             }
+        }
+
+        public void IncrementMetricsReceived(int count = 1)
+        {
+            counters["statsd.metrics_received"] += count;
+        }
+
+        public void AddToCounter(string key, long value = 1, double sampleRate = 1)
+        {
+            if (!counters.ContainsKey(key))
+            {
+                counters[key] = 0;
+            }
+            counters[key] += (long)Math.Round((double)value * (1d / sampleRate));
+        }
+
+        public void AddToGauge(string key, int value)
+        {
+            if (gauges.ContainsKey(key))
+            {
+                gauges[key] += value;
+            }
+            else
+            {
+                SetGauge(key, value);
+            }
+        }
+
+        public void SetGauge(string key, int value)
+        {
+            gauges[key] = value;
+        }
+
+        public void AddToTimer(string key, long value, double sampleRate = 1)
+        {
+            if (!timers.ContainsKey(key))
+            {
+                timers[key] = new List<long>();
+                timer_counters[key] = 0;
+            }
+            timers[key].Add(value);
+            timer_counters[key] += (long)(1d / sampleRate);
+        }
+
+        public void AddToSet(string key, string value)
+        {
+            if (!sets.ContainsKey(key))
+            {
+                sets[key] = new HashSet<string>();
+            }
+            sets[key].Add(value);
         }
 
         private static bool IsDouble(string str)
@@ -484,7 +529,7 @@ namespace Clearwave.Statsd
                 case "g":
                     return IsInteger(fields[0]);
                 case "ms":
-                    return IsInteger(fields[0]) && double.Parse(fields[0]) >= 0;
+                    return IsInteger(fields[0]) && long.Parse(fields[0]) >= 0;
                 default:
                     return IsInteger(fields[0]);
             }

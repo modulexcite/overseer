@@ -23,7 +23,11 @@ namespace Clearwave.HAProxyTraffic
             collector.DeleteIdleStats = false;
             collector.BeforeFlush = () =>
             {
-                collector.Handle("traffic.log.queue:" + queue.Count + "|g");
+                collector.InReadLock(() =>
+                {
+                    collector.SetGauge("traffic.log.queue", queue.Count);
+                    collector.IncrementMetricsReceived();
+                });
             };
             collector.StartFlushTimer();
         }
@@ -89,11 +93,6 @@ namespace Clearwave.HAProxyTraffic
                 var http_method = log.Groups[22].Value;
                 var http_path = log.Groups[23].Value;
 
-                if (req_head_Host.Length == 0)
-                {
-                    req_head_Host = "unknown";
-                }
-
                 var packetAge = DateTime.Now.Subtract(accept_date);
                 if (packetAge.TotalMinutes > 1)
                 {
@@ -104,16 +103,21 @@ namespace Clearwave.HAProxyTraffic
                     }
                 }
 
-                var stats =
-@"haproxy.logs.route._all.hits:1|c
-haproxy.logs.route._all.status_code." + status_code.ToString() + @".hits:1|c
-haproxy.logs.route._all.bytes_read:" + bytes_read + @"|ms
-haproxy.logs.route._all.tr:" + tr + @"|ms
-haproxy.logs.host." + req_head_Host + @"._all.hits:1|c
-haproxy.logs.host." + req_head_Host + @"._all.bytes_read:" + bytes_read + @"|ms
-haproxy.logs.host." + req_head_Host + @"._all.tr:" + tr + @"|ms
-";
-                collector.Handle(stats);
+                collector.InReadLock(() =>
+                {
+                    collector.AddToCounter("haproxy.logs.route._all.hits", 1);
+                    collector.AddToCounter("haproxy.logs.route._all.status_code." + status_code.ToString() + ".hits", 1);
+                    collector.AddToCounter("haproxy.logs.route._all.bytes_read", bytes_read);
+                    collector.AddToCounter("haproxy.logs.route._all.tr", tr);
+                    collector.IncrementMetricsReceived(4);
+                    if (!string.IsNullOrWhiteSpace(req_head_Host))
+                    {
+                        collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".hits", 1);
+                        collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".bytes_read", bytes_read);
+                        collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".tr", tr);
+                        collector.IncrementMetricsReceived(3);
+                    }
+                });
             }
         }
 
