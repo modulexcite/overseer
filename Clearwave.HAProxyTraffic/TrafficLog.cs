@@ -25,7 +25,7 @@ namespace Clearwave.HAProxyTraffic
             {
                 collector.InReadLock(() =>
                 {
-                    collector.SetGauge("traffic.log.queue", queue.Count);
+                    collector.SetGauge("haproxy.logs.queue", queue.Count);
                     collector.IncrementMetricsReceived();
                 });
             };
