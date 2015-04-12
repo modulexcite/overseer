@@ -91,9 +91,8 @@ namespace Clearwave.HAProxyTraffic
                 var terminationState = log.Groups[17].Value;
 
                 var captured_request_headers = log.Groups[20].Value.Split('|');
-                var req_head_Referer = captured_request_headers[0];
-                var req_head_UserAgent = captured_request_headers[1];
-                var req_head_Host = captured_request_headers[2];
+                var req_head_UserAgent = captured_request_headers[0];
+                var req_head_Host = captured_request_headers[1];
 
                 var captured_response_headers = log.Groups[21].Value.Split('|');
                 var res_route_name = captured_response_headers[0];
