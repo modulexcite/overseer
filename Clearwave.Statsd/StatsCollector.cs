@@ -152,10 +152,10 @@ namespace Clearwave.Statsd
 
         private void ClearMetrics()
         {
-            var deleteCounters = DeleteIdleStats ? true : DeleteCounters;
-            var deleteTimers = DeleteIdleStats ? true : DeleteTimers;
-            var deleteSets = DeleteIdleStats ? true : DeleteSets;
-            var deleteGauges = DeleteIdleStats ? true : DeleteGauges;
+            var deleteCounters = DeleteIdleStats || DeleteCounters;
+            var deleteTimers = DeleteIdleStats || DeleteTimers;
+            var deleteSets = DeleteIdleStats || DeleteSets;
+            var deleteGauges = DeleteIdleStats || DeleteGauges;
 
             foreach (var key in counters.Keys.ToList())
             {
