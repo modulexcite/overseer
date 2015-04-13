@@ -74,13 +74,19 @@ namespace Clearwave.Statsd
         public Action BeforeFlush { get; set; }
         public Action<long, Metrics> OnFlush { get; set; }
 
+        private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+        public static double DateTimeToUnixTimestamp(DateTime dateTime)
+        {
+            return (dateTime - Epoch.ToLocalTime()).TotalSeconds;
+        }
+
         public void FlushMetrics()
         {
             if (BeforeFlush != null)
             {
                 BeforeFlush();
             }
-            var time_stamp = (long)Math.Round(DateTime.UtcNow.DateTimeToUnixTimestamp()); // seconds
+            var time_stamp = (long)Math.Round(DateTimeToUnixTimestamp(DateTime.UtcNow)); // seconds
             if (old_timestamp > 0)
             {
                 gauges["statsd.timestamp_lag_namespace"] = (time_stamp - old_timestamp - (FlushInterval / 1000));
@@ -507,5 +513,22 @@ namespace Clearwave.Statsd
             }
             sets[key].Add(value);
         }
+    }
+
+    public class Metrics
+    {
+        public Dictionary<string, long> counters { get; set; }
+        public Dictionary<string, double> counter_rates { get; set; }
+
+        public Dictionary<string, long> gauges { get; set; }
+
+        public Dictionary<string, List<long>> timers { get; set; }
+        public Dictionary<string, long> timer_counters { get; set; }
+        public Dictionary<string, Dictionary<string, long>> timer_data { get; set; }
+
+        public Dictionary<string, HashSet<string>> sets { get; set; }
+
+        public int[] pctThreshold { get; set; }
+        public Dictionary<string, long> statsd_metrics { get; set; }
     }
 }
