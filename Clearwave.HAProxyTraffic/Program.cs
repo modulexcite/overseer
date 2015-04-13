@@ -58,16 +58,16 @@ namespace Clearwave.HAProxyTraffic
                 @"<134>Apr 10 21:52:30 atl-lb01.prod.clearwaveinc.com haproxy[2041]: 199.227.242.46:62615 [10/Apr/2015:21:52:20.343] http-web~ http-web/atl-web02 9961/0/0/176/10137 200 1226 - - ---- 49/43/0/1/0 0/0 {Mozilla/5.0 (Windows NT 6.1; WOW64; chromeframe/29.0.1547.76) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.76 Safari/|secure.clearwaveinc.com|} {||||} ""POST /v2.5/ProviderPortal/Encounters/ListItems HTTP/1.1""",
             };
 
-            //var r = new Random();
+            var r = new Random();
 
-            //while (true)
-            //{
-            //    foreach (var s in samples)
-            //    {
-            //        TrafficLog.QueuePacket(s);
-            //        Thread.Sleep((int)Math.Round((r.Next(100) / 160d) + 1) - 1);
-            //    }
-            //}
+            while (true)
+            {
+                foreach (var s in samples)
+                {
+                    TrafficLog.QueuePacket(s);
+                    Thread.Sleep((int)Math.Round((r.Next(100) / 160d) + 1) - 1);
+                }
+            }
         }
     }
 }

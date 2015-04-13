@@ -29,6 +29,75 @@ namespace Clearwave.HAProxyTraffic
                     collector.IncrementMetricsReceived();
                 });
             };
+            collector.OnFlush = (time_stamp, metrics) =>
+            {
+                if (bool.Parse(ConfigurationManager.AppSettings["haproxytraffic_FlushToConsole"]))
+                {
+                    var trimPad = new Func<string, int, string>((v, len) =>
+                    {
+                        if (v.Length > len)
+                        {
+                            v = v.Substring(0, len);
+                        }
+                        return v.PadLeft(len);
+                    });
+
+                    Console.Clear();
+                    Console.WriteLine("statsd haproxy.logs: " + ExtensionMethods.UnixTimeStampToDateTime(time_stamp).ToString("O"));
+                    Console.WriteLine();
+                    if (!metrics.sets.ContainsKey("haproxy.logs.host")) { return; }
+                    Console.WriteLine("{0,10} {1,10} {2,7} {3,7} {4,6} {5,6} {6,6} {7,6}"
+                                , "host"
+                                , "route"
+                                , "hits"
+                                , "kb/sum"
+                                , "tr/avg"
+                                , "200/cnt"
+                                , "300/cnt"
+                                , "500/cnt"
+                                );
+                    foreach (var host in metrics.sets["haproxy.logs.host"].OrderBy(x => x))
+                    {
+                        var hostClean = host.Replace('.', '_');
+                        foreach (var routeName in metrics.sets["haproxy.logs.routes"].OrderBy(x => x))
+                        {
+                            var routeNameClean = routeName.Replace('.', '_');
+                            Console.WriteLine("{0,10} {1,10} {2,7} {3,7:F0} {4,6} {5,6} {6,6} {7,6}"
+                                , trimPad(host, 10)
+                                , trimPad(routeName, 10)
+                                , metrics.counters["haproxy.logs." + hostClean + ".route." + routeNameClean + ".hits"]
+                                , (double)metrics.counters["haproxy.logs." + hostClean + ".route." + routeNameClean + ".bytes_read"] / 1024d
+                                , metrics.timer_data["haproxy.logs." + hostClean + ".route." + routeNameClean + ".tr"]["mean"]
+                                , metrics.counters.GetValueOrDefault("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code.200.hits")
+                                , metrics.counters.GetValueOrDefault("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code.300.hits")
+                                , metrics.counters.GetValueOrDefault("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code.500.hits")
+                                );
+                        }
+                    }
+
+                    Console.WriteLine();
+
+                    foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.actconn")).OrderBy(x => x.Key))
+                    {
+                        Console.WriteLine(item.Key + "=" + item.Value);
+                    }
+                    foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.feconn")).OrderBy(x => x.Key))
+                    {
+                        Console.WriteLine(item.Key + "=" + item.Value);
+                    }
+                    foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.beconn")).OrderBy(x => x.Key))
+                    {
+                        Console.WriteLine(item.Key + "=" + item.Value);
+                    }
+                    foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.srv_conn")).OrderBy(x => x.Key))
+                    {
+                        Console.WriteLine(item.Key + "=" + item.Value);
+                    }
+
+                    Console.WriteLine();
+                    Console.WriteLine("haproxy.logs.queue=" + metrics.gauges["haproxy.logs.queue"]);
+                }
+            };
             collector.StartFlushTimer();
         }
 
@@ -129,44 +198,47 @@ namespace Clearwave.HAProxyTraffic
 
                 collector.InReadLock(() =>
                 {
-                    collector.AddToCounter("haproxy.logs.route._all.hits", 1);
-                    collector.AddToCounter("haproxy.logs.route._all.status_code." + status_code.ToString() + ".hits", 1);
-                    collector.AddToCounter("haproxy.logs.route._all.bytes_read", bytes_read);
-                    collector.AddToTimer("haproxy.logs.route._all.tr", tr);
-                    collector.AddToCounter("haproxy.logs.route._all.SqlCount", sql_count);
-                    collector.AddToTimer("haproxy.logs.route._all.SqlDurationMs", sql_dur);
-                    collector.AddToTimer("haproxy.logs.route._all.AspNetDurationMs", aspnet_dur);
-                    collector.AddToSet("haproxy.logs.routes", "_all");
-                    collector.SetGauge("haproxy.logs.actconn", actconn);
-                    collector.SetGauge("haproxy.logs.feconn." + frontend_name, feconn);
-                    collector.SetGauge("haproxy.logs.beconn." + backend_name, beconn);
-                    collector.SetGauge("haproxy.logs.srv_conn."+server_name, srv_conn);
-                    collector.IncrementMetricsReceived(12);
-                    if (!string.IsNullOrWhiteSpace(res_route_name))
-                    {
-                        var name = res_route_name;
-                        if (!string.IsNullOrWhiteSpace(res_app_id))
-                        {
-                            name = res_app_id + "." + name;
-                        }
-                        name = name.Replace('.', '_');
-                        collector.AddToCounter("haproxy.logs.route." + name + ".hits", 1);
-                        collector.AddToCounter("haproxy.logs.route." + name + ".status_code." + status_code.ToString() + ".hits", 1);
-                        collector.AddToCounter("haproxy.logs.route." + name + ".bytes_read", bytes_read);
-                        collector.AddToTimer("haproxy.logs.route." + name + ".tr", tr);
-                        collector.AddToCounter("haproxy.logs.route." + name + ".SqlCount", sql_count);
-                        collector.AddToTimer("haproxy.logs.route." + name + ".SqlDurationMs", sql_dur);
-                        collector.AddToTimer("haproxy.logs.route." + name + ".AspNetDurationMs", aspnet_dur);
-                        collector.AddToSet("haproxy.logs.routes", name);
-                        collector.IncrementMetricsReceived(8);
-                    }
                     if (!string.IsNullOrWhiteSpace(req_head_Host))
                     {
-                        collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".hits", 1);
-                        collector.AddToCounter("haproxy.logs.host." + req_head_Host + ".bytes_read", bytes_read);
-                        collector.AddToTimer("haproxy.logs.host." + req_head_Host + ".tr", tr);
+                        var hostClean = req_head_Host.Replace('.', '_');
+
                         collector.AddToSet("haproxy.logs.host", req_head_Host);
-                        collector.IncrementMetricsReceived(4);
+                        collector.AddToSet("haproxy.logs.routes", "_all");
+                        collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.hits", 1);
+                        collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.status_code." + status_code.ToString() + ".hits", 1);
+                        collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.bytes_read", bytes_read);
+                        collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.tr", tr);
+                        collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.SqlCount", sql_count);
+                        collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.SqlDurationMs", sql_dur);
+                        collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.AspNetDurationMs", aspnet_dur);
+                        var metricCount = 9;
+
+                        if (!string.IsNullOrWhiteSpace(res_route_name))
+                        {
+                            var routeName = res_route_name;
+                            if (!string.IsNullOrWhiteSpace(res_app_id))
+                            {
+                                routeName = res_app_id + "." + routeName;
+                            }
+                            var routeNameClean = routeName.Replace('.', '_');
+                            collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".hits", 1);
+                            collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code." + status_code.ToString() + ".hits", 1);
+                            collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".bytes_read", bytes_read);
+                            collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".tr", tr);
+                            collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".SqlCount", sql_count);
+                            collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".SqlDurationMs", sql_dur);
+                            collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".AspNetDurationMs", aspnet_dur);
+                            collector.AddToSet("haproxy.logs.routes", routeName);
+                            metricCount += 8;
+                        }
+
+                        collector.SetGauge("haproxy.logs.actconn", actconn);
+                        collector.SetGauge("haproxy.logs.feconn." + frontend_name, feconn);
+                        collector.SetGauge("haproxy.logs.beconn." + backend_name, beconn);
+                        collector.SetGauge("haproxy.logs.srv_conn." + server_name, srv_conn);
+                        metricCount += 4;
+
+                        collector.IncrementMetricsReceived(metricCount);
                     }
                 });
             }
