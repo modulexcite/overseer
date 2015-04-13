@@ -18,9 +18,10 @@ namespace Clearwave.HAProxyTraffic
         {
             collector = new StatsCollector();
             collector.FlushInterval = 60 * 1000; // 1 minute
-            collector.FlushToConsole = bool.Parse(ConfigurationManager.AppSettings["statsd_FlushToConsole"]);
+            collector.FlushToConsole = false;
             collector.PctThreshold = new[] { 90 };
             collector.DeleteIdleStats = false;
+            collector.DeleteGauges = true;
             collector.BeforeFlush += () =>
             {
                 collector.InReadLock(() =>
@@ -29,75 +30,7 @@ namespace Clearwave.HAProxyTraffic
                     collector.IncrementMetricsReceived();
                 });
             };
-            collector.OnFlush += (time_stamp, metrics) =>
-            {
-                if (bool.Parse(ConfigurationManager.AppSettings["haproxytraffic_FlushToConsole"]))
-                {
-                    var trimPad = new Func<string, int, string>((v, len) =>
-                    {
-                        if (v.Length > len)
-                        {
-                            v = v.Substring(0, len);
-                        }
-                        return v.PadLeft(len);
-                    });
-
-                    Console.Clear();
-                    Console.WriteLine("statsd haproxy.logs: " + ExtensionMethods.UnixTimeStampToDateTime(time_stamp).ToString("O"));
-                    Console.WriteLine();
-                    if (!metrics.sets.ContainsKey("haproxy.logs.host")) { return; }
-                    Console.WriteLine("{0,10} {1,10} {2,7} {3,7} {4,6} {5,6} {6,6} {7,6}"
-                                , "host"
-                                , "route"
-                                , "hits"
-                                , "kb/sum"
-                                , "tr/avg"
-                                , "200/cnt"
-                                , "300/cnt"
-                                , "500/cnt"
-                                );
-                    foreach (var host in metrics.sets["haproxy.logs.host"].OrderBy(x => x))
-                    {
-                        var hostClean = host.Replace('.', '_');
-                        foreach (var routeName in metrics.sets["haproxy.logs.routes"].OrderBy(x => x))
-                        {
-                            var routeNameClean = routeName.Replace('.', '_');
-                            Console.WriteLine("{0,10} {1,10} {2,7} {3,7:F0} {4,6} {5,6} {6,6} {7,6}"
-                                , trimPad(host, 10)
-                                , trimPad(routeName, 10)
-                                , metrics.counters["haproxy.logs." + hostClean + ".route." + routeNameClean + ".hits"]
-                                , (double)metrics.counters["haproxy.logs." + hostClean + ".route." + routeNameClean + ".bytes_read"] / 1024d
-                                , metrics.timer_data["haproxy.logs." + hostClean + ".route." + routeNameClean + ".tr"]["mean"]
-                                , metrics.counters.GetValueOrDefault("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code.200.hits")
-                                , metrics.counters.GetValueOrDefault("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code.300.hits")
-                                , metrics.counters.GetValueOrDefault("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code.500.hits")
-                                );
-                        }
-                    }
-
-                    Console.WriteLine();
-
-                    foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.actconn")).OrderBy(x => x.Key))
-                    {
-                        Console.WriteLine(item.Key + "=" + item.Value);
-                    }
-                    foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.feconn")).OrderBy(x => x.Key))
-                    {
-                        Console.WriteLine(item.Key + "=" + item.Value);
-                    }
-                    foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.beconn")).OrderBy(x => x.Key))
-                    {
-                        Console.WriteLine(item.Key + "=" + item.Value);
-                    }
-                    foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.srv_conn")).OrderBy(x => x.Key))
-                    {
-                        Console.WriteLine(item.Key + "=" + item.Value);
-                    }
-
-                    Console.WriteLine();
-                    Console.WriteLine("haproxy.logs.queue=" + metrics.gauges["haproxy.logs.queue"]);
-                }
-            };
+            collector.OnFlush += ConsolePrinter.Flush;
             collector.StartFlushTimer();
         }
 
@@ -113,7 +46,6 @@ namespace Clearwave.HAProxyTraffic
             queueNotifier.Set();
         }
 
-
         public static void Start()
         {
             Task.Run(() =>
@@ -127,7 +59,7 @@ namespace Clearwave.HAProxyTraffic
                         {
                             queueNotifier.WaitOne();
                         }
-                        Handle(packet);
+                        ParsePacket(packet);
                     }
                     catch (Exception e)
                     {
@@ -138,110 +70,120 @@ namespace Clearwave.HAProxyTraffic
             Console.WriteLine("Started Traffic Log Aggregator Queue");
         }
 
-        private static void Handle(string packet)
+        private static Regex haproxyRegex =
+            new Regex(
+                @"^(<\d+>)(\w+ \d+ \S+) (\S+) (\S+)\[(\d+)\]: (\S+):(\d+) \[(\S+)\] (\S+) (\S+)\/(\S+) (\S+) (\S+) (\S+) *(\S+) (\S+) (\S+) (\S+) (\S+) \{([^}]*)\} \{([^}]*)\} ""(\S+) ([^""]+) (\S+)"".*$"
+                , RegexOptions.Compiled);
+
+        private static void ParsePacket(string packet)
         {
             var log = haproxyRegex.Match(packet);
             if (log.Success)
             {
-                var haproxy_name = log.Groups[3].Value;
-                var client_ip = log.Groups[6].Value;
-                var accept_date = DateTime.ParseExact(log.Groups[8].Value, "dd/MMM/yyyy:HH:mm:ss.fff", CultureInfo.InvariantCulture);
-
-                var frontend_name = log.Groups[9].Value;
-                var backend_name = log.Groups[10].Value;
-                var server_name = log.Groups[11].Value;
-
-                var timers = log.Groups[12].Value;
-                var tr = int.Parse(timers.Split('/')[3]);
-
-                var status_code = int.Parse(log.Groups[13].Value);
-                var bytes_read = int.Parse(log.Groups[14].Value);
-
-                var terminationState = log.Groups[17].Value;
-
-                var conn = log.Groups[18].Value.Split('/');
-                var actconn = int.Parse(conn[0]);
-                var feconn = int.Parse(conn[1]);
-                var beconn = int.Parse(conn[2]);
-                var srv_conn = int.Parse(conn[3]);
-
-                var captured_request_headers = log.Groups[20].Value.Split('|');
-                var req_head_UserAgent = captured_request_headers[0];
-                var req_head_Host = captured_request_headers[1];
-
-                var captured_response_headers = log.Groups[21].Value.Split('|');
-                var res_route_name = captured_response_headers[0];
-                var res_sql_count = captured_response_headers[1];
-                var res_sql_dur = captured_response_headers[2];
-                var res_aspnet_dur = captured_response_headers[3];
-                var res_app_id = captured_response_headers[4];
-
-                var http_method = log.Groups[22].Value;
-                var http_path = log.Groups[23].Value;
-
-                var packetAge = DateTime.Now.Subtract(accept_date);
-                if (packetAge.TotalMinutes > 1)
-                {
-                    // too old to flush? should we discard?
-                    if (packetAge.TotalMinutes > 2)
-                    {
-                        // way too old to flush? should we discard?
-                    }
-                }
-
-                int sql_count = 0;
-                int sql_dur = 0;
-                int aspnet_dur = 0;
-                if (res_sql_count.Length > 0) { sql_count = int.Parse(res_sql_count); }
-                if (res_sql_dur.Length > 0) { sql_dur = int.Parse(res_sql_dur); }
-                if (res_aspnet_dur.Length > 0) { aspnet_dur = int.Parse(res_aspnet_dur); }
-
-                collector.InReadLock(() =>
-                {
-                    if (!string.IsNullOrWhiteSpace(req_head_Host))
-                    {
-                        var hostClean = req_head_Host.Replace('.', '_');
-
-                        collector.AddToSet("haproxy.logs.host", req_head_Host);
-                        collector.AddToSet("haproxy.logs.routes", "_all");
-                        collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.hits", 1);
-                        collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.status_code." + status_code.ToString() + ".hits", 1);
-                        collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.bytes_read", bytes_read);
-                        collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.tr", tr);
-                        collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.SqlCount", sql_count);
-                        collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.SqlDurationMs", sql_dur);
-                        collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.AspNetDurationMs", aspnet_dur);
-                        var metricCount = 9;
-
-                        if (!string.IsNullOrWhiteSpace(res_route_name))
-                        {
-                            var routeName = res_route_name;
-                            if (!string.IsNullOrWhiteSpace(res_app_id))
-                            {
-                                routeName = res_app_id + "." + routeName;
-                            }
-                            var routeNameClean = routeName.Replace('.', '_');
-                            collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".hits", 1);
-                            collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code." + status_code.ToString() + ".hits", 1);
-                            collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".bytes_read", bytes_read);
-                            collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".tr", tr);
-                            collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".SqlCount", sql_count);
-                            collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".SqlDurationMs", sql_dur);
-                            collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".AspNetDurationMs", aspnet_dur);
-                            collector.AddToSet("haproxy.logs.routes", routeName);
-                            metricCount += 8;
-                        }
-
-                        collector.SetGauge("haproxy.logs.actconn", actconn);
-                        collector.SetGauge("haproxy.logs.feconn." + frontend_name, feconn);
-                        collector.SetGauge("haproxy.logs.beconn." + backend_name, beconn);
-                        collector.SetGauge("haproxy.logs.srv_conn." + server_name, srv_conn);
-                        metricCount += 4;
-
-                        collector.IncrementMetricsReceived(metricCount);
-                    }
-                });
+                ProcessLog(log);
             }
+        }
+
+        private static void ProcessLog(Match log)
+        {
+            var haproxy_name = log.Groups[3].Value;
+            var client_ip = log.Groups[6].Value;
+            var accept_date = DateTime.ParseExact(log.Groups[8].Value, "dd/MMM/yyyy:HH:mm:ss.fff", CultureInfo.InvariantCulture);
+
+            var frontend_name = log.Groups[9].Value;
+            var backend_name = log.Groups[10].Value;
+            var server_name = log.Groups[11].Value;
+
+            var timers = log.Groups[12].Value;
+            var tr = int.Parse(timers.Split('/')[3]);
+
+            var status_code = int.Parse(log.Groups[13].Value);
+            var bytes_read = int.Parse(log.Groups[14].Value);
+
+            var terminationState = log.Groups[17].Value;
+
+            var conn = log.Groups[18].Value.Split('/');
+            var actconn = int.Parse(conn[0]);
+            var feconn = int.Parse(conn[1]);
+            var beconn = int.Parse(conn[2]);
+            var srv_conn = int.Parse(conn[3]);
+
+            var captured_request_headers = log.Groups[20].Value.Split('|');
+            var req_head_UserAgent = captured_request_headers[0];
+            var req_head_Host = captured_request_headers[1];
+
+            var captured_response_headers = log.Groups[21].Value.Split('|');
+            var res_route_name = captured_response_headers[0];
+            var res_sql_count = captured_response_headers[1];
+            var res_sql_dur = captured_response_headers[2];
+            var res_aspnet_dur = captured_response_headers[3];
+            var res_app_id = captured_response_headers[4];
+
+            var http_method = log.Groups[22].Value;
+            var http_path = log.Groups[23].Value;
+
+            var packetAge = DateTime.Now.Subtract(accept_date);
+            if (packetAge.TotalMinutes > 1)
+            {
+                // too old to flush? should we discard?
+                if (packetAge.TotalMinutes > 2)
+                {
+                    // way too old to flush? should we discard?
+                }
+            }
+
+            int sql_count = 0;
+            int sql_dur = 0;
+            int aspnet_dur = 0;
+            if (res_sql_count.Length > 0) { sql_count = int.Parse(res_sql_count); }
+            if (res_sql_dur.Length > 0) { sql_dur = int.Parse(res_sql_dur); }
+            if (res_aspnet_dur.Length > 0) { aspnet_dur = int.Parse(res_aspnet_dur); }
+
+            collector.InReadLock(() =>
+            {
+                if (!string.IsNullOrWhiteSpace(req_head_Host))
+                {
+                    var hostClean = req_head_Host.Replace('.', '_');
+
+                    collector.AddToSet("haproxy.logs.host", req_head_Host);
+                    collector.AddToSet("haproxy.logs.routes", "_all");
+                    collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.hits", 1);
+                    collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.status_code." + status_code.ToString() + ".hits", 1);
+                    collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.bytes_read", bytes_read);
+                    collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.tr", tr);
+                    collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.SqlCount", sql_count);
+                    collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.SqlDurationMs", sql_dur);
+                    collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.AspNetDurationMs", aspnet_dur);
+                    var metricCount = 9;
+
+                    if (!string.IsNullOrWhiteSpace(res_route_name))
+                    {
+                        var routeName = res_route_name;
+                        if (!string.IsNullOrWhiteSpace(res_app_id))
+                        {
+                            routeName = res_app_id + "." + routeName;
+                        }
+                        var routeNameClean = routeName.Replace('.', '_');
+                        collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".hits", 1);
+                        collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code." + status_code.ToString() + ".hits", 1);
+                        collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".bytes_read", bytes_read);
+                        collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".tr", tr);
+                        collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".SqlCount", sql_count);
+                        collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".SqlDurationMs", sql_dur);
+                        collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".AspNetDurationMs", aspnet_dur);
+                        collector.AddToSet("haproxy.logs.routes", routeName);
+                        metricCount += 8;
+                    }
+
+                    collector.SetGauge("haproxy.logs.actconn", actconn);
+                    collector.SetGauge("haproxy.logs.feconn." + frontend_name, feconn);
+                    collector.SetGauge("haproxy.logs.beconn." + backend_name, beconn);
+                    collector.SetGauge("haproxy.logs.srv_conn." + server_name, srv_conn);
+                    metricCount += 4;
+
+                    collector.IncrementMetricsReceived(metricCount);
+                }
+            });
         }
 
         //TrafficByRoute:
@@ -311,12 +253,5 @@ namespace Clearwave.HAProxyTraffic
         // capture response header X-Sql-Duration-Ms    len 7
         // capture response header X-AspNet-Duration-Ms len 7
         // capture response header X-Application-Id     len 5
-
-
-
-        private static Regex haproxyRegex =
-            new Regex(
-                @"^(<\d+>)(\w+ \d+ \S+) (\S+) (\S+)\[(\d+)\]: (\S+):(\d+) \[(\S+)\] (\S+) (\S+)\/(\S+) (\S+) (\S+) (\S+) *(\S+) (\S+) (\S+) (\S+) (\S+) \{([^}]*)\} \{([^}]*)\} ""(\S+) ([^""]+) (\S+)"".*$"
-                , RegexOptions.Compiled);
     }
 }
