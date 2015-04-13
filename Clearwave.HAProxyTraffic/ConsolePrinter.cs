@@ -48,6 +48,10 @@ namespace Clearwave.HAProxyTraffic
                 {
                     var applicationId = routeName.IndexOf(".") > 0 && applications.Contains(routeName.Substring(0, routeName.IndexOf("."))) ? routeName.Substring(0, routeName.IndexOf(".")) : "";
                     var routeNameClean = routeName.Replace('.', '_');
+                    if (!metrics.counters.ContainsKey("haproxy.logs." + hostClean + ".route." + routeNameClean + ".hits"))
+                    {
+                        continue; // invalid route/host combo
+                    }
                     Console.WriteLine("{0,10} {1,5} {2,15} {3,7} {4,7:F0} {5,4} {6,5} {7,5} {8,5}"
                         , TrimAndPad(host, 10)
                         , TrimAndPad(applicationId, 5)
