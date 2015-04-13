@@ -174,7 +174,7 @@ namespace Clearwave.HAProxyTraffic
 
                     if (!string.IsNullOrWhiteSpace(res_route_name))
                     {
-                        var routeName = res_route_name;
+                        var routeName = http_method + "-" + res_route_name;
                         if (!string.IsNullOrWhiteSpace(res_app_id))
                         {
                             routeName = res_app_id + "." + routeName;
