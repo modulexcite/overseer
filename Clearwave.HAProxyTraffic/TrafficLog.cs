@@ -139,6 +139,9 @@ namespace Clearwave.HAProxyTraffic
             if (res_sql_dur.Length > 0) { sql_dur = int.Parse(res_sql_dur); }
             if (res_aspnet_dur.Length > 0) { aspnet_dur = int.Parse(res_aspnet_dur); }
 
+            // normalize statusCode into statusCode family
+            var statusCode = status_code > 0 ? (int)(Math.Floor((double)status_code / 100d) * 100) : 0;
+
             collector.InReadLock(() =>
             {
                 if (!string.IsNullOrWhiteSpace(req_head_Host))
@@ -148,7 +151,7 @@ namespace Clearwave.HAProxyTraffic
                     collector.AddToSet("haproxy.logs.host", req_head_Host);
                     collector.AddToSet("haproxy.logs.routes", "_all");
                     collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.hits", 1);
-                    collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.status_code." + status_code.ToString() + ".hits", 1);
+                    collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.status_code." + statusCode.ToString() + ".hits", 1);
                     collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.bytes_read", bytes_read);
                     collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.tr", tr);
                     collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.SqlCount", sql_count);
@@ -165,7 +168,7 @@ namespace Clearwave.HAProxyTraffic
                         }
                         var routeNameClean = routeName.Replace('.', '_');
                         collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".hits", 1);
-                        collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code." + status_code.ToString() + ".hits", 1);
+                        collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".status_code." + statusCode.ToString() + ".hits", 1);
                         collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".bytes_read", bytes_read);
                         collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".tr", tr);
                         collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".SqlCount", sql_count);
