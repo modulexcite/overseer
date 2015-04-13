@@ -150,6 +150,10 @@ namespace Clearwave.HAProxyTraffic
 
                     collector.AddToSet("haproxy.logs.host", req_head_Host);
                     collector.AddToSet("haproxy.logs.routes", "_all");
+                    if (!string.IsNullOrWhiteSpace(res_app_id))
+                    {
+                        collector.AddToSet("haproxy.logs.applications", res_app_id);
+                    }
                     collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.hits", 1);
                     collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.status_code." + statusCode.ToString() + ".hits", 1);
                     collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.bytes_read", bytes_read);
