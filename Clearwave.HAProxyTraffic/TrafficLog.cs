@@ -160,7 +160,7 @@ namespace Clearwave.HAProxyTraffic
                     collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.tr", tr);
                     if (sql_count >= 0)
                     {
-                        collector.AddToCounter("haproxy.logs." + hostClean + ".route._all.SqlCount", sql_count);
+                        collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.SqlCount", sql_count);
                     }
                     if (sql_dur >= 0)
                     {
@@ -186,7 +186,7 @@ namespace Clearwave.HAProxyTraffic
                         collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".tr", tr);
                         if (sql_count >= 0)
                         {
-                            collector.AddToCounter("haproxy.logs." + hostClean + ".route." + routeNameClean + ".SqlCount", sql_count);
+                            collector.AddToTimer("haproxy.logs." + hostClean + ".route." + routeNameClean + ".SqlCount", sql_count);
                         }
                         if (sql_dur >= 0)
                         {
