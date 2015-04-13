@@ -58,16 +58,6 @@ namespace Clearwave.Statsd
 
         private long old_timestamp = 0;
 
-        private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
-        public static double DateTimeToUnixTimestamp(DateTime dateTime)
-        {
-            return (dateTime - Epoch.ToLocalTime()).TotalSeconds;
-        }
-        public static DateTime UnixTimeStampToDateTime(double unixTimeStamp)
-        {
-            return Epoch.AddSeconds(unixTimeStamp).ToLocalTime();
-        }
-
         public void StartFlushTimer()
         {
             if (interval != null)
@@ -90,7 +80,7 @@ namespace Clearwave.Statsd
             {
                 BeforeFlush();
             }
-            var time_stamp = (long)Math.Round(DateTimeToUnixTimestamp(DateTime.UtcNow)); // seconds
+            var time_stamp = (long)Math.Round(DateTime.UtcNow.DateTimeToUnixTimestamp()); // seconds
             if (old_timestamp > 0)
             {
                 gauges["statsd.timestamp_lag_namespace"] = (time_stamp - old_timestamp - (FlushInterval / 1000));
