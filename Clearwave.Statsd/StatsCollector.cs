@@ -70,9 +70,8 @@ namespace Clearwave.Statsd
 
         private Timer interval; // need to keep a reference so GC doesn't clean it up
 
-
-        public Action BeforeFlush { get; set; }
-        public Action<long, Metrics> OnFlush { get; set; }
+        public event Action BeforeFlush;
+        public event Action<long, Metrics> OnFlush;
 
         private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
         public static double DateTimeToUnixTimestamp(DateTime dateTime)

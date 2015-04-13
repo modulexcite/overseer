@@ -21,7 +21,7 @@ namespace Clearwave.HAProxyTraffic
             collector.FlushToConsole = bool.Parse(ConfigurationManager.AppSettings["statsd_FlushToConsole"]);
             collector.PctThreshold = new[] { 90 };
             collector.DeleteIdleStats = false;
-            collector.BeforeFlush = () =>
+            collector.BeforeFlush += () =>
             {
                 collector.InReadLock(() =>
                 {
@@ -29,7 +29,7 @@ namespace Clearwave.HAProxyTraffic
                     collector.IncrementMetricsReceived();
                 });
             };
-            collector.OnFlush = (time_stamp, metrics) =>
+            collector.OnFlush += (time_stamp, metrics) =>
             {
                 if (bool.Parse(ConfigurationManager.AppSettings["haproxytraffic_FlushToConsole"]))
                 {
