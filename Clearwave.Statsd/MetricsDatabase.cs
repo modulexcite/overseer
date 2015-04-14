@@ -113,7 +113,7 @@ VALUES
 
         public static string GetGaugeMetricTableName(string key, IDbConnection c)
         {
-            var metricId = GetMetricID(key, "gauge", c);
+            var metricId = GetMetricID("stats.gauges." + key, "gauge", c);
 
             var tableName = c.ExecuteScalar<string>(@"
 MERGE
@@ -140,7 +140,7 @@ CREATE TABLE " + SchemaName + @"." + tableName + @"
 
         public static string GetCounterMetricTableName(string key, IDbConnection c)
         {
-            var metricId = GetMetricID(key, "counter", c);
+            var metricId = GetMetricID("stats.counters." + key, "counter", c);
 
             var tableName = c.ExecuteScalar<string>(@"
 MERGE
@@ -168,7 +168,7 @@ CREATE TABLE " + SchemaName + @"." + tableName + @"
 
         public static string GetSetMetricTableName(string key, IDbConnection c)
         {
-            var metricId = GetMetricID(key, "set", c);
+            var metricId = GetMetricID("stats.sets." + key, "set", c);
 
             var tableName = c.ExecuteScalar<string>(@"
 MERGE
@@ -195,7 +195,7 @@ CREATE TABLE " + SchemaName + @"." + tableName + @"
 
         public static string GetTimerMetricTableName(string key, IDbConnection c)
         {
-            var metricId = GetMetricID(key, "timer", c);
+            var metricId = GetMetricID("stats.timers." + key, "timer", c);
 
             var tableName = c.ExecuteScalar<string>(@"
 MERGE
