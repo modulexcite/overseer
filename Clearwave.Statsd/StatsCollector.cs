@@ -103,7 +103,7 @@ namespace Clearwave.Statsd
                     timers = new Dictionary<string, List<long>>(timers),
                     timer_counters = new Dictionary<string, long>(timer_counters),
                     sets = new Dictionary<string, HashSet<string>>(sets),
-                    counter_rates = new Dictionary<string, double>(),
+                    counter_rates = new Dictionary<string, long>(),
                     timer_data = new Dictionary<string, Dictionary<string, long>>(),
                     pctThreshold = PctThreshold,
                     statsd_metrics = new Dictionary<string, long>(),
@@ -214,7 +214,7 @@ namespace Clearwave.Statsd
         public static void ProcessMetrics(Metrics metrics, double flushInterval, long ts)
         {
             var sw = Stopwatch.StartNew();
-            var counter_rates = (Dictionary<string, double>)metrics.counter_rates;
+            var counter_rates = (Dictionary<string, long>)metrics.counter_rates;
             var timer_data = (Dictionary<string, Dictionary<string, long>>)metrics.timer_data;
             var statsd_metrics = (Dictionary<string, long>)metrics.statsd_metrics;
             var counters = (Dictionary<string, long>)metrics.counters;
@@ -228,7 +228,7 @@ namespace Clearwave.Statsd
                 var value = (double)counters[key];
 
                 // calculate "per second" rate
-                counter_rates[key] = Math.Round(value / (flushInterval / 1000d));
+                counter_rates[key] = (long)Math.Round(value / (flushInterval / 1000d));
             }
 
             foreach (var key in timers.Keys)
@@ -517,7 +517,7 @@ namespace Clearwave.Statsd
     public class Metrics
     {
         public Dictionary<string, long> counters { get; set; }
-        public Dictionary<string, double> counter_rates { get; set; }
+        public Dictionary<string, long> counter_rates { get; set; }
 
         public Dictionary<string, long> gauges { get; set; }
 

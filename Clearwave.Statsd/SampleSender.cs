@@ -45,12 +45,18 @@ namespace Clearwave.Statsd
                 buffer = Encoding.ASCII.GetBytes("local.random:" + r.Next(1000).ToString("F0") + "|ms");
                 bytesSent = udpClient.Send(buffer, buffer.Length);
 
+                for (int i = 0; i < r.Next(100); i++)
+                {
+                    buffer = Encoding.ASCII.GetBytes("local.guids:" + Guid.NewGuid().ToString() + "|s");
+                    bytesSent = udpClient.Send(buffer, buffer.Length);
+                }
+
                 stopwatch.Stop();
 
                 buffer = Encoding.ASCII.GetBytes("local.sampletime:" + stopwatch.Elapsed.TotalMilliseconds.ToString("F0") + "|ms");
                 bytesSent = udpClient.Send(buffer, buffer.Length);
 
-                Thread.Sleep(500);
+                Thread.Sleep(r.Next(1000));
             }
         }
     }

@@ -12,17 +12,18 @@ namespace Clearwave.HAProxyTraffic
     {
         static ConsolePrinter()
         {
-            flushToConsole = bool.Parse(ConfigurationManager.AppSettings["haproxytraffic_FlushToConsole"]);
+            _flushToConsole = bool.Parse(ConfigurationManager.AppSettings["haproxytraffic_FlushToConsole"]);
         }
 
-        private static readonly bool flushToConsole;
+        private static readonly bool _flushToConsole;
+        public static bool FlushToConsole { get { return _flushToConsole; } }
 
         private static readonly HashSet<string> EmptySet = new HashSet<string>();
         private static readonly Dictionary<string, long> EmptyTimerData = new Dictionary<string, long>() { { "mean", -1 } };
 
         public static void Flush(long time_stamp, Metrics metrics)
         {
-            if (!flushToConsole) { return; }
+            if (!FlushToConsole) { return; }
 
             Console.Clear();
             Console.WriteLine("statsd haproxy.logs: " + ExtensionMethods.UnixTimeStampToDateTime(time_stamp).ToString("O"));

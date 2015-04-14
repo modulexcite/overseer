@@ -20,13 +20,30 @@ namespace Clearwave.Statsd
             stats.PctThreshold = ConfigurationManager.AppSettings["statsd_PctThreshold"].Split(',').Select(x => int.Parse(x)).ToArray();
             stats.FlushToConsole = bool.Parse(ConfigurationManager.AppSettings["statsd_FlushToConsole"]);
             stats.DeleteIdleStats = bool.Parse(ConfigurationManager.AppSettings["statsd_DeleteIdleStats"]);
-            stats.OnFlush += new Action<long, Metrics>((time_stamp, metrics) =>
+            var flushToDatabase = bool.Parse(ConfigurationManager.AppSettings["statsd_FlushToDatabase"]);
+            if (flushToDatabase)
             {
-                foreach (var item in metrics.gauges)
+                stats.OnFlush += new Action<long, Metrics>((time_stamp, metrics) =>
                 {
-                    MetricsDatabase.RecordGauge((string)item.Key, (int)time_stamp, (long)item.Value);
-                }
-            });
+                    foreach (var item in metrics.gauges)
+                    {
+                        MetricsDatabase.RecordGauge(item.Key, time_stamp, item.Value);
+                    }
+                    foreach (var item in metrics.counters)
+                    {
+                        var rate = metrics.counter_rates[item.Key];
+                        MetricsDatabase.RecordCounter(item.Key, time_stamp, item.Value, rate);
+                    }
+                    foreach (var item in metrics.sets)
+                    {
+                        MetricsDatabase.RecordSet(item.Key, time_stamp, item.Value.Count);
+                    }
+                    foreach (var item in metrics.timers)
+                    {
+                        MetricsDatabase.RecordTimer(item.Key, time_stamp, metrics.timer_data[item.Key]);
+                    }
+                });
+            }
             stats.StartFlushTimer();
 
             Task.Run(() =>

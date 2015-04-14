@@ -30,7 +30,10 @@ namespace Clearwave.HAProxyTraffic
                     collector.IncrementMetricsReceived();
                 });
             };
-            collector.OnFlush += ConsolePrinter.Flush;
+            if (ConsolePrinter.FlushToConsole)
+            {
+                collector.OnFlush += ConsolePrinter.Flush;
+            }
             collector.StartFlushTimer();
         }
 
