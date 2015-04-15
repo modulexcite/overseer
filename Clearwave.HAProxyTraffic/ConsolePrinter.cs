@@ -110,9 +110,13 @@ namespace Clearwave.HAProxyTraffic
 
             Console.WriteLine();
             Console.WriteLine("haproxy.logs.queue=" + metrics.gauges["haproxy.logs.queue"]);
+            if (metrics.timer_data.ContainsKey("statsd.haproxy.DatabaseWriter_duration"))
+            {
+                Console.WriteLine("this statsd.haproxy.DatabaseWriter_duration=" + metrics.timer_data["statsd.haproxy.DatabaseWriter_duration"].GetValueOrDefault("mean", 0));
+            }
             if (metrics.timer_data.ContainsKey("statsd.flush_duration"))
             {
-                Console.WriteLine("statsd.flush_duration.mean=" + metrics.timer_data["statsd.flush_duration"].GetValueOrDefault("mean", 0));
+                Console.WriteLine("last statsd.flush_duration.mean=" + metrics.timer_data["statsd.flush_duration"].GetValueOrDefault("mean", 0));
             }
             if (metrics.gauges.ContainsKey("statsd.timestamp_lag_namespace"))
             {

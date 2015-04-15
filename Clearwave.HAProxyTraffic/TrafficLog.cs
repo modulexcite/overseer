@@ -30,13 +30,13 @@ namespace Clearwave.HAProxyTraffic
                     collector.IncrementMetricsReceived();
                 });
             };
-            if (ConsolePrinter.FlushToConsole)
-            {
-                collector.OnFlush += ConsolePrinter.Flush;
-            }
             if (DatabaseWriter.FlushToDatabase)
             {
                 collector.OnFlush += DatabaseWriter.Flush;
+            }
+            if (ConsolePrinter.FlushToConsole)
+            {
+                collector.OnFlush += ConsolePrinter.Flush;
             }
             collector.OnFlushError += (exception) =>
             {
@@ -45,7 +45,7 @@ namespace Clearwave.HAProxyTraffic
             collector.StartFlushTimer();
         }
 
-        private static readonly StatsCollector collector;
+        public static readonly StatsCollector collector;
 
         // TODO: this might not be the most performant compared to say... Disruptor pattern. But it's simple.
         private static readonly ConcurrentQueue<string> queue = new ConcurrentQueue<string>();

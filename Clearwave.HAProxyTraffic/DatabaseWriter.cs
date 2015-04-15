@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -33,10 +34,15 @@ namespace Clearwave.HAProxyTraffic
             return conn;
         }
 
+        [ThreadStatic]
+        private static Stopwatch sw;
+
         public static void Flush(long time_stamp, Metrics metrics)
         {
             if (!FlushToDatabase) { return; }
             if (!metrics.sets.ContainsKey("haproxy.logs.host")) { return; }
+            if (sw == null) { sw = new Stopwatch(); }
+            sw.Restart();
 
             using (var c = GetOpenSqlConnection())
             {
@@ -126,6 +132,8 @@ namespace Clearwave.HAProxyTraffic
                     }
                 }
             }
+            sw.Stop();
+            TrafficLog.collector.AddToTimer("statsd.haproxy.DatabaseWriter_duration", (long)Math.Round(sw.Elapsed.TotalMilliseconds));
         }
 
         private static void InsertTrafficSummaryRow(object row, IDbConnection c)
