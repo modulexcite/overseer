@@ -110,6 +110,14 @@ namespace Clearwave.HAProxyTraffic
 
             Console.WriteLine();
             Console.WriteLine("haproxy.logs.queue=" + metrics.gauges["haproxy.logs.queue"]);
+            if (metrics.timer_data.ContainsKey("statsd.flush_duration"))
+            {
+                Console.WriteLine("statsd.flush_duration.mean=" + metrics.timer_data["statsd.flush_duration"].GetValueOrDefault("mean", 0));
+            }
+            if (metrics.gauges.ContainsKey("statsd.timestamp_lag_namespace"))
+            {
+                Console.WriteLine("statsd.timestamp_lag_namespace=" + metrics.gauges["statsd.timestamp_lag_namespace"]);
+            }
         }
 
         private static string TrimAndPad(string v, int len)
