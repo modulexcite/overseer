@@ -64,7 +64,20 @@ namespace Clearwave.Statsd
             {
                 return;
             }
-            interval = new Timer(state => FlushMetrics(), null, FlushInterval, FlushInterval);
+            interval = new Timer(state =>
+            {
+                try
+                {
+                    FlushMetrics();
+                }
+                catch (Exception e)
+                {
+                    if (OnFlushError != null)
+                    {
+                        OnFlushError(e);
+                    }
+                }
+            }, null, FlushInterval, FlushInterval);
             Console.WriteLine("Flushing every " + FlushInterval + "ms");
         }
 
@@ -72,6 +85,7 @@ namespace Clearwave.Statsd
 
         public event Action BeforeFlush;
         public event Action<long, Metrics> OnFlush;
+        public event Action<Exception> OnFlushError;
 
         private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Unspecified);
         public static double DateTimeToUnixTimestamp(DateTime dateTime)

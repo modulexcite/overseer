@@ -34,6 +34,10 @@ namespace Clearwave.HAProxyTraffic
             {
                 collector.OnFlush += ConsolePrinter.Flush;
             }
+            collector.OnFlushError += (exception) =>
+            {
+                Program.Log.Error("Exception OnFlush(): ", exception);
+            };
             collector.StartFlushTimer();
         }
 
@@ -66,11 +70,11 @@ namespace Clearwave.HAProxyTraffic
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine("Exception Handling Packet: " + e.Message);
+                        Program.Log.Error("Exception Handling Packet: ", e);
                     }
                 }
             });
-            Console.WriteLine("Started Traffic Log Aggregator Queue");
+            Program.Log.Info("Started Traffic Log Aggregator Queue");
         }
 
         private static Regex haproxyRegex =

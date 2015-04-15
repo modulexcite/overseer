@@ -8,13 +8,18 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using log4net;
 
 namespace Clearwave.HAProxyTraffic
 {
     public class Program
     {
+        public static readonly ILog Log = LogManager.GetLogger("Clearwave.HAProxyTraffic");
+
         public static void Main(string[] args)
         {
+            log4net.Config.XmlConfigurator.Configure();
+
             var listenerPort = int.Parse(ConfigurationManager.AppSettings["syslog_port"]);
             TrafficLog.Start();
 
@@ -22,7 +27,7 @@ namespace Clearwave.HAProxyTraffic
             {
                 using (var udpClient = new UdpClient(listenerPort))
                 {
-                    Console.WriteLine("UDP listener started on port " + listenerPort);
+                    Program.Log.Info("UDP listener started on port " + listenerPort);
                     while (true)
                     {
                         var remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
@@ -34,7 +39,7 @@ namespace Clearwave.HAProxyTraffic
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine("Exception Handling Packet: " + e.Message);
+                            Program.Log.Error("Exception Handling Packet: ", e);
                         }
                     }
                 }

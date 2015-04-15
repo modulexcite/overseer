@@ -114,19 +114,7 @@ VALUES
         public static string GetGaugeMetricTableName(string key, IDbConnection c)
         {
             var metricId = GetMetricID("stats.gauges." + key, "gauge", c);
-
-            var tableName = c.ExecuteScalar<string>(@"
-MERGE
-    " + SchemaName + @".MetricTable AS t 
-USING
-    (SELECT @MetricId AS MetricID) AS s
-ON t.MetricID = s.MetricID
-WHEN MATCHED THEN
-    UPDATE SET t.TableName = 'g_' + CAST(s.MetricID AS VARCHAR(10))
-WHEN NOT MATCHED THEN
-    INSERT (MetricID, TableName) VALUES (s.MetricID, 'g_' + CAST(s.MetricID AS VARCHAR(10)))
-OUTPUT inserted.TableName;
-", new { MetricId = metricId });
+            var tableName = GetMetricTableName(metricId, "g_", c);
 
             c.Execute(@"
 IF (SELECT OBJECT_ID('" + SchemaName + @"." + tableName + @"')) IS NULL
@@ -145,19 +133,7 @@ CREATE TABLE " + SchemaName + @"." + tableName + @"
         public static string GetCounterMetricTableName(string key, IDbConnection c)
         {
             var metricId = GetMetricID("stats.counters." + key, "counter", c);
-
-            var tableName = c.ExecuteScalar<string>(@"
-MERGE
-    " + SchemaName + @".MetricTable AS t 
-USING
-    (SELECT @MetricId AS MetricID) AS s
-ON t.MetricID = s.MetricID
-WHEN MATCHED THEN
-    UPDATE SET t.TableName = 'c_' + CAST(s.MetricID AS VARCHAR(10))
-WHEN NOT MATCHED THEN
-    INSERT (MetricID, TableName) VALUES (s.MetricID, 'c_' + CAST(s.MetricID AS VARCHAR(10)))
-OUTPUT inserted.TableName;
-", new { MetricId = metricId });
+            var tableName = GetMetricTableName(metricId, "c_", c);
 
             c.Execute(@"
 IF (SELECT OBJECT_ID('" + SchemaName + @"." + tableName + @"')) IS NULL
@@ -177,19 +153,7 @@ CREATE TABLE " + SchemaName + @"." + tableName + @"
         public static string GetSetMetricTableName(string key, IDbConnection c)
         {
             var metricId = GetMetricID("stats.sets." + key, "set", c);
-
-            var tableName = c.ExecuteScalar<string>(@"
-MERGE
-    " + SchemaName + @".MetricTable AS t 
-USING
-    (SELECT @MetricId AS MetricID) AS s
-ON t.MetricID = s.MetricID
-WHEN MATCHED THEN
-    UPDATE SET t.TableName = 's_' + CAST(s.MetricID AS VARCHAR(10))
-WHEN NOT MATCHED THEN
-    INSERT (MetricID, TableName) VALUES (s.MetricID, 's_' + CAST(s.MetricID AS VARCHAR(10)))
-OUTPUT inserted.TableName;
-", new { MetricId = metricId });
+            var tableName = GetMetricTableName(metricId, "s_", c);
 
             c.Execute(@"
 IF (SELECT OBJECT_ID('" + SchemaName + @"." + tableName + @"')) IS NULL
@@ -208,19 +172,7 @@ CREATE TABLE " + SchemaName + @"." + tableName + @"
         public static string GetTimerMetricTableName(string key, IDbConnection c)
         {
             var metricId = GetMetricID("stats.timers." + key, "timer", c);
-
-            var tableName = c.ExecuteScalar<string>(@"
-MERGE
-    " + SchemaName + @".MetricTable AS t 
-USING
-    (SELECT @MetricId AS MetricID) AS s
-ON t.MetricID = s.MetricID
-WHEN MATCHED THEN
-    UPDATE SET t.TableName = 't_' + CAST(s.MetricID AS VARCHAR(10))
-WHEN NOT MATCHED THEN
-    INSERT (MetricID, TableName) VALUES (s.MetricID, 't_' + CAST(s.MetricID AS VARCHAR(10)))
-OUTPUT inserted.TableName;
-", new { MetricId = metricId });
+            var tableName = GetMetricTableName(metricId, "t_", c);
 
             c.Execute(@"
 IF (SELECT OBJECT_ID('" + SchemaName + @"." + tableName + @"')) IS NULL
@@ -249,6 +201,34 @@ CREATE TABLE " + SchemaName + @"." + tableName + @"
             return tableName;
         }
 
+        private static string GetMetricTableName(int metricID, string tableNamePrefix, IDbConnection c)
+        {
+            var tableName = c.ExecuteScalar<string>(@"
+MERGE
+    " + SchemaName + @".MetricTable AS t 
+USING
+    (SELECT @MetricId AS MetricID) AS s
+ON t.MetricID = s.MetricID
+WHEN MATCHED THEN
+    UPDATE SET t.TableName = @prefix + CAST(s.MetricID AS VARCHAR(10))
+WHEN NOT MATCHED THEN
+    INSERT (MetricID, TableName) VALUES (s.MetricID, @prefix + CAST(s.MetricID AS VARCHAR(10)))
+OUTPUT inserted.TableName;
+", new { MetricId = metricID, prefix = new DbString { Value = tableNamePrefix, Length = 2, IsAnsi = true, } });
+
+            c.ExecuteScalar<string>(@"
+MERGE
+    " + SchemaName + @".MetricTableDataRollupLevel AS t 
+USING
+    (SELECT @MetricId AS MetricID, 1 AS [Level]) AS s
+ON t.MetricID = s.MetricID AND t.[Level] = s.[Level]
+WHEN NOT MATCHED THEN
+    INSERT (MetricID, [Level], RollupTableName) VALUES (s.MetricID, 1, @prefix + CAST(s.MetricID AS VARCHAR(10)) + '_RollupLevel1');
+", new { MetricId = metricID, prefix = new DbString { Value = tableNamePrefix, Length = 2, IsAnsi = true, } });
+
+            return tableName;
+        }
+
         private static int GetMetricID(string key, string type, IDbConnection c)
         {
             var metricId = c.ExecuteScalar<int>(@"
@@ -264,6 +244,40 @@ WHEN NOT MATCHED THEN
 OUTPUT inserted.MetricID;
 ", new { Key = key, Type = type });
             return metricId;
+        }
+
+        public static void Rollup()
+        {
+            /*
+             * Here's the idea:
+             * 
+             * 1. This table will keep track of which metrics have been rolled up, when, etc.
+             * 2. On an interval, for each row:
+             *  a. figure out if the "LastRollupTimestamp" is far enough in the past to
+             *     rollup again
+             *  b. starting at "LastRollupTimestamp", execute one or more rollups inside
+             *     a transaction
+             *  c. update the MetricTableDataRollupLevel row and commit
+             * 3. We can do the same thing for purging data.
+             * 
+             * CREATE TABLE [dbo].[MetricTableDataRollupLevel] (
+             *     [MetricID] [int] NOT NULL,
+             *     [Level] [tinyint] NOT NULL,
+             *     [RollupTableName] varchar(200) NOT NULL,
+             *     [LastRollupTimestamp] [int] NULL,
+             *     [LastRollupStartTime] [datetime] NULL,
+             *     [LastRollupEndTime] [datetime] NULL,
+             *     [LastRollupRecords] [int] NULL,
+             *     [LastPurgeBeforeTimestamp] [int] NULL,
+             *     [LastPurgeStartTime] [datetime] NULL,
+             *     [LastPurgeEndTime] [datetime] NULL,
+             *     [LastPurgeRecords] [bigint] NULL,
+             *     CONSTRAINT [PK_MetricTableDataRollupLevel] PRIMARY KEY CLUSTERED 
+             *     (
+             *         [MetricID], [Level] ASC
+             *     )
+             * )
+             */
         }
     }
 }
