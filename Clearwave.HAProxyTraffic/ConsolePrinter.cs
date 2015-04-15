@@ -110,13 +110,25 @@ namespace Clearwave.HAProxyTraffic
 
             Console.WriteLine();
             Console.WriteLine("haproxy.logs.queue=" + metrics.gauges["haproxy.logs.queue"]);
-            if (metrics.timer_data.ContainsKey("statsd.haproxy.DatabaseWriter_duration"))
+            if (metrics.gauges.ContainsKey("statsd.haproxy.databasewriter_duration"))
             {
-                Console.WriteLine("this statsd.haproxy.DatabaseWriter_duration=" + metrics.timer_data["statsd.haproxy.DatabaseWriter_duration"].GetValueOrDefault("mean", 0));
+                Console.WriteLine("statsd.haproxy.databasewriter_duration=" + metrics.gauges["statsd.haproxy.databasewriter_duration"]);
             }
-            if (metrics.timer_data.ContainsKey("statsd.flush_duration"))
+            if (metrics.counters.ContainsKey("haproxy.logs.packets_received"))
             {
-                Console.WriteLine("last statsd.flush_duration.mean=" + metrics.timer_data["statsd.flush_duration"].GetValueOrDefault("mean", 0));
+                Console.WriteLine("haproxy.logs.packets_received=" + metrics.counters["haproxy.logs.packets_received"]);
+            }
+            if (metrics.counters.ContainsKey("statsd.metrics_received"))
+            {
+                Console.WriteLine("statsd.metrics_received=" + metrics.counters["statsd.metrics_received"]);
+            }
+            if (metrics.gauges.ContainsKey("statsd.haproxy.databasewriter_duration"))
+            {
+                Console.WriteLine("statsd.haproxy.databasewriter_duration=" + metrics.gauges["statsd.haproxy.databasewriter_duration"]);
+            }
+            if (metrics.gauges.ContainsKey("statsd.flush_duration"))
+            {
+                Console.WriteLine("statsd.flush_duration=" + metrics.gauges["statsd.flush_duration"]);
             }
             if (metrics.gauges.ContainsKey("statsd.timestamp_lag_namespace"))
             {

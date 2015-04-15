@@ -155,6 +155,8 @@ namespace Clearwave.HAProxyTraffic
 
             collector.InReadLock(() =>
             {
+                collector.AddToCounter("haproxy.logs.packets_received");
+                var metricCount = 1;
                 if (!string.IsNullOrWhiteSpace(req_head_Host))
                 {
                     var hostClean = req_head_Host.Replace('.', '_');
@@ -181,7 +183,7 @@ namespace Clearwave.HAProxyTraffic
                     {
                         collector.AddToTimer("haproxy.logs." + hostClean + ".route._all.AspNetDurationMs", aspnet_dur);
                     }
-                    var metricCount = 9;
+                    metricCount += 9;
 
                     if (!string.IsNullOrWhiteSpace(res_route_name))
                     {
@@ -232,8 +234,8 @@ namespace Clearwave.HAProxyTraffic
                         }
                     }
 
-                    collector.IncrementMetricsReceived(metricCount);
                 }
+                collector.IncrementMetricsReceived(metricCount);
             });
         }
     }

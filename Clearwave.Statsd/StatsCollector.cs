@@ -48,12 +48,12 @@ namespace Clearwave.Statsd
             { "statsd.metrics_received", 0 },
             { "statsd.bad_lines_seen", 0 }
         };
-        private Dictionary<string, List<long>> timers = new Dictionary<string, List<long>>()
-        {
-            { "statsd.flush_duration", new List<long>() },
-        };
+        private Dictionary<string, List<long>> timers = new Dictionary<string, List<long>>();
         private Dictionary<string, long> timer_counters = new Dictionary<string, long>();
-        private Dictionary<string, long> gauges = new Dictionary<string, long>();
+        private Dictionary<string, long> gauges = new Dictionary<string, long>()
+        {
+            { "statsd.flush_duration", 0 },
+        };
         private Dictionary<string, HashSet<string>> sets = new Dictionary<string, HashSet<string>>();
 
         private readonly ReaderWriterLockSlim flushMetricsReaderWriterLock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
@@ -169,7 +169,10 @@ namespace Clearwave.Statsd
             }
 
             flushStopwatch.Stop();
-            AddToTimer("statsd.flush_duration", (long)Math.Round(flushStopwatch.Elapsed.TotalMilliseconds));
+            InReadLock(() =>
+            {
+                AddToGauge("statsd.flush_duration", (int)Math.Round(flushStopwatch.Elapsed.TotalMilliseconds));
+            });
         }
 
         private void ClearMetrics()
@@ -200,12 +203,6 @@ namespace Clearwave.Statsd
 
             foreach (var key in timers.Keys.ToList())
             {
-                if (key == "statsd.flush_duration")
-                {
-                    timers[key] = new List<long>();
-                    timer_counters[key] = 0;
-                    continue;
-                }
                 if (deleteTimers)
                 {
                     timers.Remove(key);
@@ -232,6 +229,11 @@ namespace Clearwave.Statsd
 
             foreach (var key in gauges.Keys.ToList())
             {
+                if (key == "statsd.flush_duration")
+                {
+                    gauges[key] = 0;
+                    continue;
+                }
                 if (deleteGauges)
                 {
                     gauges.Remove(key);

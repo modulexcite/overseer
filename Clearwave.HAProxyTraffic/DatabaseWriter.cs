@@ -133,7 +133,10 @@ namespace Clearwave.HAProxyTraffic
                 }
             }
             sw.Stop();
-            TrafficLog.collector.AddToTimer("statsd.haproxy.DatabaseWriter_duration", (long)Math.Round(sw.Elapsed.TotalMilliseconds));
+            TrafficLog.collector.InReadLock(() =>
+            {
+                TrafficLog.collector.SetGauge("statsd.haproxy.databasewriter_duration", (int)Math.Round(sw.Elapsed.TotalMilliseconds));
+            });
         }
 
         private static void InsertTrafficSummaryRow(object row, IDbConnection c)
