@@ -34,6 +34,10 @@ namespace Clearwave.HAProxyTraffic
             {
                 collector.OnFlush += ConsolePrinter.Flush;
             }
+            if (DatabaseWriter.FlushToDatabase)
+            {
+                collector.OnFlush += DatabaseWriter.Flush;
+            }
             collector.OnFlushError += (exception) =>
             {
                 Program.Log.Error("Exception OnFlush(): ", exception);
@@ -181,7 +185,7 @@ namespace Clearwave.HAProxyTraffic
 
                     if (!string.IsNullOrWhiteSpace(res_route_name))
                     {
-                        var routeName = http_method + "-" + res_route_name;
+                        var routeName = http_method + "." + res_route_name;
                         if (!string.IsNullOrWhiteSpace(res_app_id))
                         {
                             routeName = res_app_id + "." + routeName;
@@ -208,10 +212,25 @@ namespace Clearwave.HAProxyTraffic
                     }
 
                     collector.SetGauge("haproxy.logs.actconn", actconn);
-                    collector.SetGauge("haproxy.logs.feconn." + frontend_name, feconn);
-                    collector.SetGauge("haproxy.logs.beconn." + backend_name, beconn);
-                    collector.SetGauge("haproxy.logs.srv_conn." + server_name, srv_conn);
-                    metricCount += 4;
+                    metricCount += 1;
+                    if (!string.IsNullOrWhiteSpace(frontend_name))
+                    {
+                        collector.AddToSet("haproxy.logs.fe", frontend_name);
+                        collector.SetGauge("haproxy.logs.fe." + frontend_name + ".feconn", feconn);
+                        metricCount += 2;
+                        if (!string.IsNullOrWhiteSpace(backend_name))
+                        {
+                            collector.AddToSet("haproxy.logs.be", backend_name);
+                            collector.SetGauge("haproxy.logs.fe." + frontend_name + ".be." + backend_name + ".beconn", beconn);
+                            metricCount += 2;
+                            if (!string.IsNullOrWhiteSpace(server_name))
+                            {
+                                collector.AddToSet("haproxy.logs.srv", server_name);
+                                collector.SetGauge("haproxy.logs.fe." + frontend_name + ".be." + backend_name + ".srv." + server_name + ".srv_conn", srv_conn);
+                                metricCount += 2;
+                            }
+                        }
+                    }
 
                     collector.IncrementMetricsReceived(metricCount);
                 }

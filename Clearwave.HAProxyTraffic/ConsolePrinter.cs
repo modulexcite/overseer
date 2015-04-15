@@ -19,7 +19,7 @@ namespace Clearwave.HAProxyTraffic
         public static bool FlushToConsole { get { return _flushToConsole; } }
 
         private static readonly HashSet<string> EmptySet = new HashSet<string>();
-        private static readonly Dictionary<string, long> EmptyTimerData = new Dictionary<string, long>() { { "mean", -1 } };
+        private static readonly Dictionary<string, long> EmptyTimerData = new Dictionary<string, long>() { { "median", 0 }, { "mean", 0 }, { "sum", 0 }, { "count_90", 0 }, { "mean_90", 0 }, { "sum_90", 0 } };
 
         public static void Flush(long time_stamp, Metrics metrics)
         {
@@ -69,21 +69,43 @@ namespace Clearwave.HAProxyTraffic
 
             Console.WriteLine();
 
-            foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.actconn")).OrderBy(x => x.Key))
+            Console.WriteLine("{0,10} {1,10} {2,10} {3,10} {4,10} {5,10} {6,10}"
+                       , "actconn"
+                       , "fe_name"
+                       , "feconn"
+                       , "be_name"
+                       , "beconn"
+                       , "srv_name"
+                       , "srv_conn"
+                       );
+
+            if (metrics.gauges.ContainsKey("haproxy.logs.actconn"))
             {
-                Console.WriteLine(item.Key + "=" + item.Value);
-            }
-            foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.feconn")).OrderBy(x => x.Key))
-            {
-                Console.WriteLine(item.Key + "=" + item.Value);
-            }
-            foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.beconn")).OrderBy(x => x.Key))
-            {
-                Console.WriteLine(item.Key + "=" + item.Value);
-            }
-            foreach (var item in metrics.gauges.Where(x => x.Key.StartsWith("haproxy.logs.srv_conn")).OrderBy(x => x.Key))
-            {
-                Console.WriteLine(item.Key + "=" + item.Value);
+                var actconn = metrics.gauges["haproxy.logs.actconn"];
+                foreach (var frontend_name in metrics.sets["haproxy.logs.fe"].OrderBy(x => x))
+                {
+                    if (!metrics.gauges.ContainsKey("haproxy.logs.fe." + frontend_name + ".feconn")) { continue; }
+                    var feconn = metrics.gauges["haproxy.logs.fe." + frontend_name + ".feconn"];
+                    foreach (var backend_name in metrics.sets["haproxy.logs.be"].OrderBy(x => x))
+                    {
+                        if (!metrics.gauges.ContainsKey("haproxy.logs.fe." + frontend_name + ".be." + backend_name + ".beconn")) { continue; }
+                        var beconn = metrics.gauges["haproxy.logs.fe." + frontend_name + ".be." + backend_name + ".beconn"];
+                        foreach (var server_name in metrics.sets["haproxy.logs.srv"].OrderBy(x => x))
+                        {
+                            if (!metrics.gauges.ContainsKey("haproxy.logs.fe." + frontend_name + ".be." + backend_name + ".srv." + server_name + ".srv_conn")) { continue; }
+                            var srv_conn = metrics.gauges["haproxy.logs.fe." + frontend_name + ".be." + backend_name + ".srv." + server_name + ".srv_conn"];
+                            Console.WriteLine("{0,10} {1,10} {2,10} {3,10} {4,10} {5,10} {6,10}"
+                               , actconn
+                               , TrimAndPad(frontend_name, 10)
+                               , feconn
+                               , TrimAndPad(backend_name, 10)
+                               , beconn
+                               , TrimAndPad(server_name, 10)
+                               , srv_conn
+                               );
+                        }
+                    }
+                }
             }
 
             Console.WriteLine();

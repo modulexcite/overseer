@@ -1,0 +1,72 @@
+﻿CREATE TABLE [dbo].[TrafficSummary] (
+    [Id] [bigint] NOT NULL IDENTITY(1,1),
+
+    [Timestamp] [int] NOT NULL,
+    [Host] varchar(200) NOT NULL,
+    [ApplicationId] varchar(5) NOT NULL,
+    [RouteName] varchar(200) NOT NULL,
+
+    [Hits] [int] NOT NULL,
+    [BytesRead] [bigint] NOT NULL,
+
+    [Tr_median] [int] NOT NULL,
+    [Tr_mean] [int] NOT NULL,
+    [Tr_sum] [bigint] NOT NULL,
+    [Tr_count_90] [int] NOT NULL,
+    [Tr_mean_90] [int] NOT NULL,
+    [Tr_sum_90] [int] NOT NULL,
+
+    [AspNetDurationMs_median] [int] NOT NULL,
+    [AspNetDurationMs_mean] [int] NOT NULL,
+    [AspNetDurationMs_sum] [bigint] NOT NULL,
+    [AspNetDurationMs_count_90] [int] NOT NULL,
+    [AspNetDurationMs_mean_90] [int] NOT NULL,
+    [AspNetDurationMs_sum_90] [bigint] NOT NULL,
+
+    [SqlCount_median] [int] NOT NULL,
+    [SqlCount_mean] [int] NOT NULL,
+    [SqlCount_sum] [bigint] NOT NULL,
+    [SqlCount_count_90] [int] NOT NULL,
+    [SqlCount_mean_90] [int] NOT NULL,
+    [SqlCount_sum_90] [bigint] NOT NULL,
+
+    [SqlDurationMs_median] [int] NOT NULL,
+    [SqlDurationMs_mean] [int] NOT NULL,
+    [SqlDurationMs_sum] [bigint] NOT NULL,
+    [SqlDurationMs_count_90] [int] NOT NULL,
+    [SqlDurationMs_mean_90] [int] NOT NULL,
+    [SqlDurationMs_sum_90] [bigint] NOT NULL,
+
+    CONSTRAINT [PK_TrafficSummary] PRIMARY KEY CLUSTERED 
+    (
+        [Id] ASC
+    )
+);
+
+CREATE NONCLUSTERED INDEX [IX_Timestamp_Host_ApplicationId_Route] ON [dbo].[TrafficSummary]
+(
+    [Timestamp] ASC,
+    [Host] ASC,
+    [ApplicationId] ASC,
+    [RouteName] ASC
+);
+
+CREATE TABLE [dbo].[LoadBalancerStatistics] (
+    [Id] [bigint] NOT NULL IDENTITY(1,1),
+
+    [Timestamp] [int] NOT NULL,
+
+    [FrontEnd] varchar(200) NOT NULL,
+    [BackEnd] varchar(200) NOT NULL,
+    [ServerEnd] varchar(200) NOT NULL,
+
+    [actconn] [int] NOT NULL,
+    [feconn] [int] NOT NULL,
+    [beconn] [int] NOT NULL,
+    [srv_conn] [int] NOT NULL,
+
+    CONSTRAINT [PK_LoadBalancerStatistics] PRIMARY KEY CLUSTERED 
+    (
+        [Id] ASC
+    )
+);
