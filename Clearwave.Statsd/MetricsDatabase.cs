@@ -133,7 +133,11 @@ IF (SELECT OBJECT_ID('" + SchemaName + @"." + tableName + @"')) IS NULL
 CREATE TABLE " + SchemaName + @"." + tableName + @"
 (
     [Timestamp] int NOT NULL,
-    [Value] int
+    [Value] int,
+    CONSTRAINT [PK_" + tableName + @"] PRIMARY KEY CLUSTERED
+    (
+        [Timestamp] ASC
+    )
 )");
             return tableName;
         }
@@ -162,6 +166,10 @@ CREATE TABLE " + SchemaName + @"." + tableName + @"
     [Timestamp] int NOT NULL,
     [Count] int,
     [Rate] int,
+    CONSTRAINT [PK_" + tableName + @"] PRIMARY KEY CLUSTERED
+    (
+        [Timestamp] ASC
+    )
 )");
             return tableName;
         }
@@ -188,7 +196,11 @@ IF (SELECT OBJECT_ID('" + SchemaName + @"." + tableName + @"')) IS NULL
 CREATE TABLE " + SchemaName + @"." + tableName + @"
 (
     [Timestamp] int NOT NULL,
-    [Count] int
+    [Count] int,
+    CONSTRAINT [PK_" + tableName + @"] PRIMARY KEY CLUSTERED
+    (
+        [Timestamp] ASC
+    )
 )");
             return tableName;
         }
@@ -229,6 +241,10 @@ CREATE TABLE " + SchemaName + @"." + tableName + @"
     [upper_90] int,
     [sum_90] bigint,
     [sum_squares_90] bigint,
+    CONSTRAINT [PK_" + tableName + @"] PRIMARY KEY CLUSTERED
+    (
+        [Timestamp] ASC
+    )
 )");
             return tableName;
         }

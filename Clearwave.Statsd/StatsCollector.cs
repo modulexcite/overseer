@@ -73,10 +73,10 @@ namespace Clearwave.Statsd
         public event Action BeforeFlush;
         public event Action<long, Metrics> OnFlush;
 
-        private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+        private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Unspecified);
         public static double DateTimeToUnixTimestamp(DateTime dateTime)
         {
-            return (dateTime - Epoch.ToLocalTime()).TotalSeconds;
+            return (dateTime - Epoch).TotalSeconds;
         }
 
         public void FlushMetrics()
