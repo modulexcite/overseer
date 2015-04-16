@@ -38,7 +38,7 @@ namespace Clearwave.HAProxyTraffic
                 {
                     Program.Log.Error("Error Executing Database Rollup", e);
                 }
-            }, null, RollupTimerIntervalMS, RollupTimerIntervalMS);
+            }, null, 0, RollupTimerIntervalMS); // start rollup immediately
             Program.Log.Info("Started Database Rollup Timer: Every " + RollupTimerIntervalMS + "ms");
         }
 
