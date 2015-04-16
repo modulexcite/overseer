@@ -65,7 +65,7 @@ CREATE TABLE [dbo].[LoadBalancerStatistics] (
     [beconn] [int] NOT NULL,
     [srv_conn] [int] NOT NULL,
 
-    CONSTRAINT [PK_LoadBalancerStatistics] PRIMARY KEY CLUSTERED 
+    CONSTRAINT [PK_LoadBalancerStatistics] PRIMARY KEY CLUSTERED
     (
         [Id] ASC
     )
@@ -165,7 +165,7 @@ CREATE TABLE [dbo].[LoadBalancerStatisticsRollupLevel1] (
     [beconn] [int] NOT NULL,
     [srv_conn] [int] NOT NULL,
 
-    CONSTRAINT [PK_LoadBalancerStatisticsRollupLevel1] PRIMARY KEY CLUSTERED 
+    CONSTRAINT [PK_LoadBalancerStatisticsRollupLevel1] PRIMARY KEY CLUSTERED
     (
         [Id] ASC
     )
@@ -177,4 +177,52 @@ CREATE UNIQUE NONCLUSTERED INDEX [UX_Timestamp_Frontend_Backend_Server] ON [dbo]
     [Frontend] ASC,
     [Backend] ASC,
     [Server] ASC
+);
+
+CREATE TABLE [dbo].[HAProxyTrafficLoggerStatistics] (
+    [Id] [bigint] NOT NULL IDENTITY(1,1),
+
+    [Timestamp] [int] NOT NULL,
+
+    [QueueLength] [int] NOT NULL,
+    [PacketsReceived] [bigint] NOT NULL,
+    [MetricsReceived] [bigint] NOT NULL,
+    [DatabaseWriterDurationMS] [int] NOT NULL,
+    [FlushDurationMS] [int] NOT NULL,
+    [TimestampLagNamespace] [int] NOT NULL,
+
+    CONSTRAINT [PK_HAProxyTrafficLoggerStatistics] PRIMARY KEY CLUSTERED
+    (
+        [Id] ASC
+    )
+);
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Timestamp] ON [dbo].[HAProxyTrafficLoggerStatistics]
+(
+    [Timestamp] ASC
+);
+
+CREATE TABLE [dbo].[HAProxyTrafficLoggerStatisticsRollupLevel1] (
+    [Id] [bigint] NOT NULL IDENTITY(1,1),
+
+    [RollupCount] [int] NOT NULL,
+    [Timestamp] [int] NOT NULL,
+    [TimestampEnd] [int] NOT NULL,
+
+    [QueueLength] [int] NOT NULL,
+    [PacketsReceived] [bigint] NOT NULL,
+    [MetricsReceived] [bigint] NOT NULL,
+    [DatabaseWriterDurationMS] [int] NOT NULL,
+    [FlushDurationMS] [int] NOT NULL,
+    [TimestampLagNamespace] [int] NOT NULL,
+
+    CONSTRAINT [PK_HAProxyTrafficLoggerStatisticsRollupLevel1] PRIMARY KEY CLUSTERED
+    (
+        [Id] ASC
+    )
+);
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Timestamp] ON [dbo].[HAProxyTrafficLoggerStatisticsRollupLevel1]
+(
+    [Timestamp] ASC
 );

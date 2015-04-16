@@ -131,6 +131,44 @@ namespace Clearwave.HAProxyTraffic
                         }
                     }
                 }
+
+                long packets_received = 0;
+                long metrics_received = 0;
+                long databasewriter_duration = 0;
+                long flush_duration = 0;
+                long timestamp_lag_namespace = 0;
+                long queue_length = metrics.gauges["haproxy.logs.queue"];
+                if (metrics.counters.ContainsKey("haproxy.logs.packets_received"))
+                {
+                    packets_received = metrics.counters["haproxy.logs.packets_received"];
+                }
+                if (metrics.counters.ContainsKey("statsd.metrics_received"))
+                {
+                    metrics_received =metrics.counters["statsd.metrics_received"];
+                }
+                if (metrics.gauges.ContainsKey("statsd.haproxy.databasewriter_duration"))
+                {
+                    databasewriter_duration = metrics.gauges["statsd.haproxy.databasewriter_duration"];
+                }
+                if (metrics.gauges.ContainsKey("statsd.flush_duration"))
+                {
+                    flush_duration = metrics.gauges["statsd.flush_duration"];
+                }
+                if (metrics.gauges.ContainsKey("statsd.timestamp_lag_namespace"))
+                {
+                    timestamp_lag_namespace = metrics.gauges["statsd.timestamp_lag_namespace"];
+                }
+                var stats_row = new
+                {
+                    Timestamp = time_stamp,
+                    QueueLength = queue_length,
+                    PacketsReceived = packets_received,
+                    MetricsReceived = metrics_received,
+                    DatabaseWriterDurationMS = databasewriter_duration,
+                    FlushDurationMS = flush_duration,
+                    TimestampLagNamespace = timestamp_lag_namespace,
+                };
+                InsertHAProxyTrafficLoggerStatisticsRow(stats_row, c);
             }
             sw.Stop();
             TrafficLog.collector.InReadLock(() =>
@@ -233,6 +271,30 @@ INSERT INTO [dbo].[LoadBalancerStatistics]
            ,@feconn
            ,@beconn
            ,@srv_conn)
+";
+
+        private static void InsertHAProxyTrafficLoggerStatisticsRow(object row, IDbConnection c)
+        {
+            c.Execute(InsertHAProxyTrafficLoggerStatisticsRowRowSQLStatement, param: row);
+        }
+
+        private const string InsertHAProxyTrafficLoggerStatisticsRowRowSQLStatement = @"
+INSERT INTO [dbo].[HAProxyTrafficLoggerStatistics]
+           ([Timestamp]
+           ,[QueueLength]
+           ,[PacketsReceived]
+           ,[MetricsReceived]
+           ,[DatabaseWriterDurationMS]
+           ,[FlushDurationMS]
+           ,[TimestampLagNamespace])
+     VALUES
+           (@Timestamp
+           ,@QueueLength
+           ,@PacketsReceived
+           ,@MetricsReceived
+           ,@DatabaseWriterDurationMS
+           ,@FlushDurationMS
+           ,@TimestampLagNamespace)
 ";
 
     }

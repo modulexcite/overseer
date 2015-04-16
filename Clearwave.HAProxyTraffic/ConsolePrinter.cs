@@ -110,10 +110,6 @@ namespace Clearwave.HAProxyTraffic
 
             Console.WriteLine();
             Console.WriteLine("haproxy.logs.queue=" + metrics.gauges["haproxy.logs.queue"]);
-            if (metrics.gauges.ContainsKey("statsd.haproxy.databasewriter_duration"))
-            {
-                Console.WriteLine("statsd.haproxy.databasewriter_duration=" + metrics.gauges["statsd.haproxy.databasewriter_duration"]);
-            }
             if (metrics.counters.ContainsKey("haproxy.logs.packets_received"))
             {
                 Console.WriteLine("haproxy.logs.packets_received=" + metrics.counters["haproxy.logs.packets_received"]);

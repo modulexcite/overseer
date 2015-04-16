@@ -60,6 +60,7 @@ namespace Clearwave.HAProxyTraffic
                 {
                     Rollup("dbo.TrafficSummary", 1, c, TrafficSummaryInnerRollupSQL);
                     Rollup("dbo.LoadBalancerStatistics", 1, c, LoadBalancerStatisticsInnerRollupSQL);
+                    Rollup("dbo.HAProxyTrafficLoggerStatistics", 1, c, HAProxyTrafficLoggerStatisticsInnerRollupSQL);
                 }
                 Program.Log.Info("Completed Database Rollup");
             }
@@ -113,7 +114,26 @@ SELECT
 FROM {1}
 WHERE [Timestamp] >= @minTS
   AND [Timestamp] < @maxTS
-GROUP BY Frontend, Backend, [Server];
+GROUP BY Frontend, Backend, [Server]
+HAVING COUNT(*) > 0;
+";
+
+        private const string HAProxyTrafficLoggerStatisticsInnerRollupSQL = @"
+INSERT INTO {0}
+SELECT
+    COUNT(*) AS RollupCount
+  , @minTS AS TimestampStart
+  , @maxTS AS TimestampEnd
+  , QueueLength              = MAX(QueueLength)
+  , PacketsReceived          = SUM(PacketsReceived)
+  , MetricsReceived          = SUM(MetricsReceived)
+  , DatabaseWriterDurationMS = MAX(DatabaseWriterDurationMS)
+  , FlushDurationMS          = MAX(FlushDurationMS)
+  , TimestampLagNamespace    = SUM(TimestampLagNamespace)
+FROM {1}
+WHERE [Timestamp] >= @minTS
+  AND [Timestamp] < @maxTS
+HAVING COUNT(*) > 0;
 ";
 
         private const string TrafficSummaryInnerRollupSQL = @"
@@ -150,7 +170,8 @@ SELECT
 FROM {1}
 WHERE [Timestamp] >= @minTS
   AND [Timestamp] < @maxTS
-GROUP BY Host, ApplicationId, RouteName;
+GROUP BY Host, ApplicationId, RouteName
+HAVING COUNT(*) > 0;
 ";
 
         private const string OuterRollupSQL = @"
