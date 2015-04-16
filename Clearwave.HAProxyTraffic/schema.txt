@@ -37,13 +37,13 @@
     [SqlDurationMs_mean_90] [int] NOT NULL,
     [SqlDurationMs_sum_90] [bigint] NOT NULL,
 
-    CONSTRAINT [PK_TrafficSummary] PRIMARY KEY CLUSTERED 
+    CONSTRAINT [PK_TrafficSummary] PRIMARY KEY CLUSTERED
     (
         [Id] ASC
     )
 );
 
-CREATE NONCLUSTERED INDEX [IX_Timestamp_Host_ApplicationId_Route] ON [dbo].[TrafficSummary]
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Timestamp_Host_ApplicationId_Route] ON [dbo].[TrafficSummary]
 (
     [Timestamp] ASC,
     [Host] ASC,
@@ -56,9 +56,9 @@ CREATE TABLE [dbo].[LoadBalancerStatistics] (
 
     [Timestamp] [int] NOT NULL,
 
-    [FrontEnd] varchar(200) NOT NULL,
-    [BackEnd] varchar(200) NOT NULL,
-    [ServerEnd] varchar(200) NOT NULL,
+    [Frontend] varchar(200) NOT NULL,
+    [Backend] varchar(200) NOT NULL,
+    [Server] varchar(200) NOT NULL,
 
     [actconn] [int] NOT NULL,
     [feconn] [int] NOT NULL,
@@ -69,4 +69,112 @@ CREATE TABLE [dbo].[LoadBalancerStatistics] (
     (
         [Id] ASC
     )
+);
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Timestamp_Frontend_Backend_Server] ON [dbo].[LoadBalancerStatistics]
+(
+    [Timestamp] ASC,
+    [Frontend] ASC,
+    [Backend] ASC,
+    [Server] ASC
+);
+
+CREATE TABLE [dbo].[HAProxyTrafficRollup] (
+    [RollupTableName] varchar(200) NOT NULL,
+    [SourceTableName] varchar(200) NOT NULL,
+    [RollupLevel] int NOT NULL,
+    [BaseTableName] varchar(200) NOT NULL,
+    [LastRollupTimestamp] [int] NULL,
+    [LastRollupStartTime] [datetime] NULL,
+    [LastRollupEndTime] [datetime] NULL,
+    [LastRollupRecords] [int] NULL,
+    [LastPurgeBeforeTimestamp] [int] NULL,
+    [LastPurgeStartTime] [datetime] NULL,
+    [LastPurgeEndTime] [datetime] NULL,
+    [LastPurgeRecords] [bigint] NULL,
+    CONSTRAINT [PK_HAProxyTrafficRollup] PRIMARY KEY CLUSTERED
+    (
+        [RollupTableName] ASC
+    )
+);
+
+CREATE TABLE [dbo].[TrafficSummaryRollupLevel1] (
+    [Id] [bigint] NOT NULL IDENTITY(1,1),
+
+    [RollupCount] [int] NOT NULL,
+    [Timestamp] [int] NOT NULL,
+    [TimestampEnd] [int] NOT NULL,
+    [Host] varchar(200) NOT NULL,
+    [ApplicationId] varchar(5) NOT NULL,
+    [RouteName] varchar(200) NOT NULL,
+
+    [Hits] [int] NOT NULL,
+    [BytesRead] [bigint] NOT NULL,
+
+    [Tr_mean] [int] NOT NULL,
+    [Tr_sum] [bigint] NOT NULL,
+    [Tr_count_90] [int] NOT NULL,
+    [Tr_mean_90] [int] NOT NULL,
+    [Tr_sum_90] [int] NOT NULL,
+
+    [AspNetDurationMs_mean] [int] NOT NULL,
+    [AspNetDurationMs_sum] [bigint] NOT NULL,
+    [AspNetDurationMs_count_90] [int] NOT NULL,
+    [AspNetDurationMs_mean_90] [int] NOT NULL,
+    [AspNetDurationMs_sum_90] [bigint] NOT NULL,
+
+    [SqlCount_mean] [int] NOT NULL,
+    [SqlCount_sum] [bigint] NOT NULL,
+    [SqlCount_count_90] [int] NOT NULL,
+    [SqlCount_mean_90] [int] NOT NULL,
+    [SqlCount_sum_90] [bigint] NOT NULL,
+
+    [SqlDurationMs_mean] [int] NOT NULL,
+    [SqlDurationMs_sum] [bigint] NOT NULL,
+    [SqlDurationMs_count_90] [int] NOT NULL,
+    [SqlDurationMs_mean_90] [int] NOT NULL,
+    [SqlDurationMs_sum_90] [bigint] NOT NULL,
+
+    CONSTRAINT [PK_TrafficSummaryRollupLevel1] PRIMARY KEY CLUSTERED
+    (
+        [Id] ASC
+    )
+);
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Timestamp_Host_ApplicationId_Route] ON [dbo].[TrafficSummaryRollupLevel1]
+(
+    [Timestamp] ASC,
+    [Host] ASC,
+    [ApplicationId] ASC,
+    [RouteName] ASC
+);
+
+CREATE TABLE [dbo].[LoadBalancerStatisticsRollupLevel1] (
+    [Id] [bigint] NOT NULL IDENTITY(1,1),
+
+    [RollupCount] [int] NOT NULL,
+    [Timestamp] [int] NOT NULL,
+    [TimestampEnd] [int] NOT NULL,
+
+    [Frontend] varchar(200) NOT NULL,
+    [Backend] varchar(200) NOT NULL,
+    [Server] varchar(200) NOT NULL,
+
+    [actconn] [int] NOT NULL,
+    [feconn] [int] NOT NULL,
+    [beconn] [int] NOT NULL,
+    [srv_conn] [int] NOT NULL,
+
+    CONSTRAINT [PK_LoadBalancerStatisticsRollupLevel1] PRIMARY KEY CLUSTERED 
+    (
+        [Id] ASC
+    )
+);
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Timestamp_Frontend_Backend_Server] ON [dbo].[LoadBalancerStatisticsRollupLevel1]
+(
+    [Timestamp] ASC,
+    [Frontend] ASC,
+    [Backend] ASC,
+    [Server] ASC
 );

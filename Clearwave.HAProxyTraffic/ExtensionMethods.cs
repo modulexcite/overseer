@@ -9,9 +9,9 @@ namespace Clearwave.HAProxyTraffic
     public static class ExtensionMethods
     {
         private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
-        public static double DateTimeToUnixTimestamp(this DateTime dateTime)
+        public static int DateTimeToUnixTimestamp(this DateTime dateTime)
         {
-            return (dateTime - Epoch.ToLocalTime()).TotalSeconds;
+            return (int)(dateTime - Epoch.ToLocalTime()).TotalSeconds;
         }
         public static DateTime UnixTimeStampToDateTime(double unixTimeStamp)
         {

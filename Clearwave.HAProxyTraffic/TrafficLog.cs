@@ -33,6 +33,7 @@ namespace Clearwave.HAProxyTraffic
             if (DatabaseWriter.FlushToDatabase)
             {
                 collector.OnFlush += DatabaseWriter.Flush;
+                DatabaseRollup.StartRollupTimer();
             }
             if (ConsolePrinter.FlushToConsole)
             {
@@ -143,9 +144,9 @@ namespace Clearwave.HAProxyTraffic
                 }
             }
 
-            int sql_count = -1;
-            int sql_dur = -1;
-            int aspnet_dur = -1;
+            int sql_count = 0;
+            int sql_dur = 0;
+            int aspnet_dur = 0;
             if (res_sql_count.Length > 0) { sql_count = int.Parse(res_sql_count); }
             if (res_sql_dur.Length > 0) { sql_dur = int.Parse(res_sql_dur); }
             if (res_aspnet_dur.Length > 0) { aspnet_dur = int.Parse(res_aspnet_dur); }

@@ -48,6 +48,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DatabaseRollup.cs" />
     <Compile Include="DatabaseWriter.cs" />
     <Compile Include="ConsolePrinter.cs" />
     <Compile Include="ExtensionMethods.cs" />

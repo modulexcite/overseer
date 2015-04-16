@@ -118,9 +118,9 @@ namespace Clearwave.HAProxyTraffic
                                 var row = new
                                 {
                                     Timestamp = time_stamp,
-                                    FrontEnd = frontend_name,
-                                    BackEnd = backend_name,
-                                    ServerEnd = server_name,
+                                    Frontend = frontend_name,
+                                    Backend = backend_name,
+                                    Server = server_name,
                                     actconn = actconn,
                                     feconn = feconn,
                                     beconn = beconn,
@@ -217,18 +217,18 @@ INSERT INTO [dbo].[TrafficSummary]
         private const string InsertLoadBalancerStatisticsRowSQLStatement = @"
 INSERT INTO [dbo].[LoadBalancerStatistics]
            ([Timestamp]
-           ,[FrontEnd]
-           ,[BackEnd]
-           ,[ServerEnd]
+           ,[Frontend]
+           ,[Backend]
+           ,[Server]
            ,[actconn]
            ,[feconn]
            ,[beconn]
            ,[srv_conn])
      VALUES
            (@Timestamp
-           ,@FrontEnd
-           ,@BackEnd
-           ,@ServerEnd
+           ,@Frontend
+           ,@Backend
+           ,@Server
            ,@actconn
            ,@feconn
            ,@beconn
