@@ -59,8 +59,11 @@ namespace Clearwave.HAProxyTraffic
                 using (var c = GetOpenSqlConnection())
                 {
                     Rollup("dbo.TrafficSummary", 1, c, TrafficSummaryInnerRollupSQL);
+                    Program.Log.Info("Exec Rollup for dbo.TrafficSummary");
                     Rollup("dbo.LoadBalancerStatistics", 1, c, LoadBalancerStatisticsInnerRollupSQL);
+                    Program.Log.Info("Exec Rollup for dbo.LoadBalancerStatistics");
                     Rollup("dbo.HAProxyTrafficLoggerStatistics", 1, c, HAProxyTrafficLoggerStatisticsInnerRollupSQL);
+                    Program.Log.Info("Exec Rollup for dbo.HAProxyTrafficLoggerStatistics");
                 }
                 Program.Log.Info("Completed Database Rollup");
             }
